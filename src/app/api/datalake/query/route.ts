@@ -120,9 +120,14 @@ export async function POST(request: NextRequest) {
     const configWarning = aggregationFallback
       ? `${aggregation.toUpperCase()} sem coluna numerica: usando COUNT(*) como fallback. Selecione uma coluna de valor no editor do widget.`
       : undefined;
-    const effectiveTimeBucket: TimeBucket = safeXColumn && canFormatAsDate(safeXColumn)
-      ? timeBucket === 'none' ? 'month' : timeBucket
-      : 'none';
+    // Bug 2 fix: when xColumn is empty but timeBucket+dateColumn are set, auto-promote dateColumn as x-axis
+    const autoPromotedDateAxis = !safeXColumn && timeBucket !== 'none' && !!safeDateColumn;
+    const effectiveXColumn = autoPromotedDateAxis ? safeDateColumn : safeXColumn;
+    const effectiveTimeBucket: TimeBucket = autoPromotedDateAxis
+      ? timeBucket
+      : effectiveXColumn && canFormatAsDate(effectiveXColumn)
+        ? timeBucket === 'none' ? 'month' : timeBucket
+        : 'none';
 
     const pool = getMysqlPool();
     const escapedTable = mysql.escapeId(table);
@@ -159,7 +164,8 @@ export async function POST(request: NextRequest) {
 
     if (safeDateColumn && dateTo) {
       whereClauses.push(`${mysql.escapeId(safeDateColumn)} <= ?`);
-      whereParams.push(dateTo);
+      // Bug 1 fix: extend bare date to end-of-day so DATETIME rows are not excluded
+      whereParams.push(/^\d{4}-\d{2}-\d{2}$/.test(dateTo) ? `${dateTo} 23:59:59` : dateTo);
     }
 
     const whereSql = whereClauses.length > 0 ? ` WHERE ${whereClauses.join(' AND ')}` : '';
@@ -180,7 +186,7 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    if (!safeXColumn) {
+    if (!effectiveXColumn) {
       const selectExpr =
         effectiveAggregation === 'count'
           ? 'COUNT(*) AS value'
@@ -209,11 +215,12 @@ export async function POST(request: NextRequest) {
         ok: true,
         data: [{ label: 'resultado', value: mainValue }],
         filterWarning,
-        configWarning,
+        // Bug 2 fix: warn when timeBucket is configured but there's no axis to group by
+        configWarning: configWarning ?? (timeBucket !== 'none' ? 'Agrupamento Temporal requer um Eixo ou Coluna de Período' : undefined),
       });
     }
 
-    const escapedX = mysql.escapeId(safeXColumn);
+    const escapedX = mysql.escapeId(effectiveXColumn);
     const isNumericBucket = safeNumericBucketSize > 0;
     const labelExpression = isNumericBucket
       ? `FLOOR(${escapedX} / ${safeNumericBucketSize}) * ${safeNumericBucketSize}`
@@ -233,7 +240,7 @@ export async function POST(request: NextRequest) {
     const [rows] = await pool.query<RowDataPacket[]>(
       `SELECT ${selectExpr}
        FROM ${escapedTable}${whereSql}
-       GROUP BY label
+       GROUP BY 1
        ORDER BY ${orderBySql}
        LIMIT ${safeLimit}`,
       whereParams
