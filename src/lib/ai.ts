@@ -1,6 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai';
 import { OpenAIEmbeddings } from '@langchain/openai';
-import OpenAI from 'openai';
+import OpenAI, { toFile } from 'openai';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { 
   SentimentResultSchema, 
@@ -51,9 +51,7 @@ export async function transcribeAudio(audioBuffer: Buffer | Blob | File): Promis
 
   try {
     const transcription = await openAiClient.audio.transcriptions.create({
-      file: audioBuffer instanceof Buffer 
-        ? new File([audioBuffer], 'audio.ogg', { type: 'audio/ogg' })
-        : audioBuffer,
+      file: await toFile(audioBuffer, 'audio.ogg', { type: 'audio/ogg' }),
       model: 'whisper-1',
       language: 'pt',
     });
