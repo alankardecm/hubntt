@@ -84,7 +84,7 @@ Mapeamento de termos de negocio para esta tabela:
 - Se a tabela for fato_contratos: "contrato" e "assinante" sao equivalentes.
 - Se a tabela for crm_Funter: a coluna "cliente" tem o nome do cliente (ex: CLARO, OI, VIVO). Para filtrar por nome use filterColumn=cliente e filterOperator=contains. A coluna "contrato" identifica cada contrato. COUNT(*) = quantidade de contratos. Use "estagio" ou "status" para filtrar situacao do contrato.
 
-Regras para gerar o JSON:
+Regras CRITICAS para gerar o JSON:
 - Gere ate 3 sugestoes de widgets no array "suggestions"
 - Cada sugestao deve ter:
   - title: Titulo amigavel em portugues
@@ -95,18 +95,25 @@ Regras para gerar o JSON:
   - aggregation: count, sum, avg, min, max
   - filterColumn: nome da coluna para o primeiro filtro (se houver)
   - filterOperator: eq, neq, contains, gte, lte, gt, lt
-  - filterValue: valor do primeiro filtro
+  - filterValue: valor do primeiro filtro (SEMPRE string, nunca numero)
   - filter2Column: nome da coluna para o segundo filtro (se houver)
   - filter2Operator: eq, neq, contains, gte, lte, gt, lt
-  - filter2Value: valor do segundo filtro
+  - filter2Value: valor do segundo filtro (SEMPRE string)
   - dateColumn: coluna de data para o recorte temporal (se houver)
   - dateFrom: data inicial YYYY-MM-DD
   - dateTo: data final YYYY-MM-DD
   - rationale: explicacao de por que esse widget e util para o pedido do usuario.
-- Se o usuario pediu uma tendencia temporal, use uma coluna de data no "x".
-- Se o usuario pediu um valor total, use chartType="metric" e aggregation="sum".
-- Extraia filtros do texto. Ex: "aprovados" -> filterColumn: status, filterOperator: eq, filterValue: aprovado.
-- Ex: "acima de 500" -> filterColumn: valor, filterOperator: gte, filterValue: 500.
+
+REGRAS DE AGREGACAO (OBRIGATORIAS):
+- "quantos", "quantidade", "total de registros", "numero de" -> aggregation: "count", metric: null. NUNCA use sum para contar registros.
+- "valor total", "receita", "faturamento", "soma de valor" -> aggregation: "sum" com metric na coluna de valor.
+- "media", "ticket medio" -> aggregation: "avg".
+- NUNCA some colunas de valor quando o usuario pergunta quantidade/contagem.
+
+REGRAS DE FILTRO:
+- "aprovados", "ativo", "vigente" -> use filterOperator: "contains" para status/estagio, nao "eq", pois o valor exato pode variar.
+- Para meses: "marco 2026" -> dateFrom: "2026-03-01", dateTo: "2026-03-31".
+- Para nomes de clientes: sempre use filterOperator: "contains".
 - Use APENAS as colunas fornecidas.
 
 Responda APENAS o JSON.`
