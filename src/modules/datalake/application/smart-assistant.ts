@@ -1,13 +1,55 @@
 import { openaiClient } from '@/infrastructure/ai/chat-clients';
 import { getDatalakeOverview, getTablePreview } from '@/modules/datalake/application/overview';
+import { getMysqlPool } from '@/infrastructure/datalake/mysql-client';
 import type { DashboardSuggestion, DashboardSuggestionResponse, DatalakeTableInfo } from '@/shared/types/datalake';
+import type { RowDataPacket } from 'mysql2';
+import mysql from 'mysql2';
 
-/**
- * Smart Assistant for Dashboard building.
- * It uses a two-step AI process:
- * 1. Identify the most relevant table for the user's prompt.
- * 2. Use the table schema (columns) to generate precise widget configurations.
- */
+const DATE_PATTERN = /(data|dt_|_at$|competencia|vencimento|inicio|fim|conclusao|abertura|resposta|evento|cadastro|termino)/i;
+const ID_PATTERN = /(^id($|_)|(_id$)|(^cod_)|(^codigo$))/i;
+const NUMERIC_TYPES = /^(int|bigint|smallint|tinyint|decimal|float|double|numeric)/i;
+const DATE_TYPES = /^(date|datetime|timestamp)/i;
+
+function isCategoricalColumn(name: string, type: string): boolean {
+  if (ID_PATTERN.test(name)) return false;
+  if (DATE_PATTERN.test(name)) return false;
+  if (NUMERIC_TYPES.test(type)) return false;
+  if (DATE_TYPES.test(type)) return false;
+  if (name.includes('formatada') || name.includes('descricao') || name.includes('endereco') || name.includes('email')) return false;
+  return true;
+}
+
+async function fetchColumnSamples(
+  tableName: string,
+  columns: Array<{ name: string; type: string }>
+): Promise<Record<string, string[]>> {
+  const pool = getMysqlPool();
+  const escapedTable = mysql.escapeId(tableName);
+  const result: Record<string, string[]> = {};
+
+  const categoricalCols = columns
+    .filter(c => isCategoricalColumn(c.name, c.type))
+    .slice(0, 8);
+
+  await Promise.all(
+    categoricalCols.map(async (col) => {
+      try {
+        const escapedCol = mysql.escapeId(col.name);
+        const [rows] = await pool.query<RowDataPacket[]>(
+          `SELECT DISTINCT ${escapedCol} AS v FROM ${escapedTable} WHERE ${escapedCol} IS NOT NULL AND ${escapedCol} != '' ORDER BY ${escapedCol} LIMIT 15`
+        );
+        const values = (rows as Array<Record<string, unknown>>)
+          .map(r => String(r.v ?? ''))
+          .filter(Boolean);
+        if (values.length > 0) result[col.name] = values;
+      } catch {
+        // silently skip if column query fails
+      }
+    })
+  );
+
+  return result;
+}
 
 async function identifyRelevantTable(prompt: string, tables: DatalakeTableInfo[]): Promise<string | null> {
   if (!process.env.OPENAI_API_KEY) return null;
@@ -43,8 +85,7 @@ Responda APENAS com o nome da tabela. Se nenhuma for relevante, responda "none".
 
     const result = response.choices[0]?.message?.content?.trim().toLowerCase();
     if (result === 'none' || !result) return null;
-    
-    // Validate if it's one of the tables
+
     return tables.find(t => t.name.toLowerCase() === result)?.name || null;
   } catch {
     return null;
@@ -59,13 +100,16 @@ export async function smartWidgetAssistant(prompt: string): Promise<DashboardSug
 
   const table = await identifyRelevantTable(prompt, overview.tables);
   if (!table) {
-    // If no specific table found, fallback to the generic suggestion logic
-    // but with more context
     return { ok: true, prompt, suggestions: [], source: 'heuristic' };
   }
 
   const schema = await getTablePreview(table, 1);
   const columns = schema.columns.map(c => `${c.name} (${c.type})`).join(', ');
+
+  const columnSamples = await fetchColumnSamples(table, schema.columns);
+  const samplesText = Object.entries(columnSamples)
+    .map(([col, values]) => `  - ${col}: ${values.map(v => `"${v}"`).join(', ')}`)
+    .join('\n');
 
   try {
     const response = await openaiClient.chat.completions.create({
@@ -79,11 +123,16 @@ export async function smartWidgetAssistant(prompt: string): Promise<DashboardSug
 O usuario quer criar um widget para a tabela "${table}".
 Colunas disponiveis: ${columns}
 
+VALORES REAIS DAS COLUNAS CATEGORICAS (use exatamente esses valores nos filtros):
+${samplesText || '  (nenhum disponivel)'}
+
 Mapeamento de termos de negocio para esta tabela:
 - Se a tabela for crm_solicitacoes: "protocolo" e "solicitacao" sao o mesmo conceito. COUNT(*) = quantidade de protocolos abertos.
 - Se a tabela for fato_solicitacoes: "atendimento" e o termo principal. Use sla_segundos para metricas de SLA e tempo. Para filtrar por nome de cliente use nome_cliente com operador "contains".
 - Se a tabela for fato_contratos: "contrato" e "assinante" sao equivalentes.
-- Se a tabela for crm_Funter: cada linha e um contrato. Colunas: "cliente" (nome do cliente), "contrato" (numero), "estagio" (status do contrato: Aprovado, Cancelado, etc), "dt_cadastro" (data de cadastro do contrato - use como dateColumn), "valor" (valor do contrato). Para filtrar aprovados: filterColumn=estagio, filterOperator=contains, filterValue=Aprovado. Para filtrar por nome: filterColumn=cliente, filterOperator=contains. NUNCA use fato_contratos para contar contratos — use crm_Funter.
+- Se a tabela for crm_Funter: cada linha e um contrato. Colunas: "cliente" (nome do cliente), "contrato" (numero), "estagio" (status do contrato), "dt_cadastro" (data de cadastro - use como dateColumn), "valor" (valor do contrato). NUNCA use fato_contratos para contar contratos.
+
+IMPORTANTE: Use os VALORES REAIS listados acima para os filtros. Se o usuario pedir "aprovados", escolha o valor da lista de estagio/status que mais se aproxima semanticamente.
 
 Regras CRITICAS para gerar o JSON:
 - Gere ate 3 sugestoes de widgets no array "suggestions"
@@ -112,7 +161,7 @@ REGRAS DE AGREGACAO (OBRIGATORIAS):
 - NUNCA some colunas de valor quando o usuario pergunta quantidade/contagem.
 
 REGRAS DE FILTRO:
-- "aprovados", "ativo", "vigente" -> use filterOperator: "contains" para status/estagio, nao "eq", pois o valor exato pode variar.
+- Use EXATAMENTE os valores reais listados acima. Prefira "contains" para evitar erros de case ou espacos.
 - Para meses: "marco 2026" -> dateFrom: "2026-03-01", dateTo: "2026-03-31".
 - Para nomes de clientes: sempre use filterOperator: "contains".
 - Use APENAS as colunas fornecidas.
@@ -130,6 +179,7 @@ Responda APENAS o JSON.`
     const parsed = JSON.parse(content) as { suggestions?: DashboardSuggestion[] };
     console.log('[smart-assistant] prompt:', prompt);
     console.log('[smart-assistant] table:', table);
+    console.log('[smart-assistant] column samples:', JSON.stringify(columnSamples));
     console.log('[smart-assistant] suggestions:', JSON.stringify(parsed.suggestions, null, 2));
 
     return {
