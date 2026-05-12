@@ -7,7 +7,7 @@ import {
   Home, Grid, FileText, MessageSquare,
   Settings, LogOut,
   Activity, Database, Bell, BarChart2, Wallet,
-  Mic, Bot, TriangleAlert
+  Mic, Bot, TriangleAlert, Smartphone
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -16,7 +16,8 @@ const NAV_ITEMS = [
   { icon: BarChart2,     href: '/dashboards',           label: 'Dashboard' },
   { icon: Activity,      href: '/dashboard/noc',        label: 'Monitoramento' },
   { icon: Bell,          href: '/monitoring/zabbix',    label: 'Zabbix' },
-  { icon: Bot,           href: '/dashboard/comunicacao',label: 'IA Comunicação' },
+  { icon: Bot,           href: '/dashboard/comunicacao',    label: 'IA Comunicação' },
+  { icon: Smartphone,   href: '/dashboard/whatsapp',       label: 'WhatsApp' },
   { icon: TriangleAlert, href: '/dashboard/alertas',    label: 'Alertas' },
   { icon: Wallet,        href: '/dashboard/custos',     label: 'Custos' },
   { icon: Mic,           href: '/dashboard/netmeet',    label: 'NetMeet' },
