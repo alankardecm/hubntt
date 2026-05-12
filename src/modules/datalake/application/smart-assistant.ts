@@ -24,9 +24,12 @@ async function identifyRelevantTable(prompt: string, tables: DatalakeTableInfo[]
 Tabelas disponiveis: ${tableNames}
 
 Mapeamento obrigatorio de termos de negocio:
-- "protocolo", "protocolos", "numero de protocolo", "quantidade de protocolo" -> crm_solicitacoes
-- "atendimento", "atendimentos", "sla de atendimento", "fila de atendimento" -> fato_solicitacoes
-- "contrato", "contratos", "carteira", "churn", "assinante" -> fato_contratos
+- "protocolo", "protocolos", "numero de protocolo", "quantidade de protocolo", "chamado", "chamados" -> fato_solicitacoes
+- "atendimento", "atendimentos", "sla de atendimento", "fila de atendimento", "atendente", "equipe" -> fato_solicitacoes
+- "nome do cliente", "cliente X", "contratos do cliente", "contratos por cliente", "quantos contratos" -> crm_Funter
+- "contrato", "contratos", "carteira", "churn", "assinante", "valor contrato", "receita" -> fato_contratos
+- Se o pedido menciona o NOME de um cliente especifico (ex: "cliente CLARO", "contratos da OI") use crm_Funter pois ela tem a coluna "cliente" com o nome.
+- Se o pedido e sobre metricas financeiras ou status de contratos sem mencionar nome de cliente, use fato_contratos.
 
 Responda APENAS com o nome da tabela. Se nenhuma for relevante, responda "none".`
         },
@@ -77,8 +80,9 @@ Colunas disponiveis: ${columns}
 
 Mapeamento de termos de negocio para esta tabela:
 - Se a tabela for crm_solicitacoes: "protocolo" e "solicitacao" sao o mesmo conceito. COUNT(*) = quantidade de protocolos abertos.
-- Se a tabela for fato_solicitacoes: "atendimento" e o termo principal. Use sla_segundos para metricas de SLA e tempo.
+- Se a tabela for fato_solicitacoes: "atendimento" e o termo principal. Use sla_segundos para metricas de SLA e tempo. Para filtrar por nome de cliente use nome_cliente com operador "contains".
 - Se a tabela for fato_contratos: "contrato" e "assinante" sao equivalentes.
+- Se a tabela for crm_Funter: a coluna "cliente" tem o nome do cliente (ex: CLARO, OI, VIVO). Para filtrar por nome use filterColumn=cliente e filterOperator=contains. A coluna "contrato" identifica cada contrato. COUNT(*) = quantidade de contratos. Use "estagio" ou "status" para filtrar situacao do contrato.
 
 Regras para gerar o JSON:
 - Gere ate 3 sugestoes de widgets no array "suggestions"
