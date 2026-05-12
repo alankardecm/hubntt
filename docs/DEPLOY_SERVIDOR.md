@@ -44,11 +44,9 @@ http://10.250.110.238:4200
 - RAG
 - Supabase (mensagens, grupos, análise)
 
-### O que ainda não funciona — aguarda liberação de firewall
-- **Zabbix** — porta `8989` bloqueada para o IP `10.250.110.238`
-- **Data Lake MySQL** — porta `3306` bloqueada para o IP `10.250.110.238`
-
-O time de firewall foi acionado em 2026-05-12 para liberar essas portas.
+### O que funciona — confirmado em 2026-05-12
+- **Zabbix** — funcionando. O hostname `monitor.netturbosolucoes.com.br` não resolvia DNS no servidor. Solução: usar o IP direto `186.209.32.130` na variável `ZABBIX_URL` do `.env.local`
+- **Data Lake MySQL** — funcionando após liberação de firewall
 
 ### O que ainda não foi ativado
 - **Evolution API** — não instalada no servidor (planejado para próxima etapa)
