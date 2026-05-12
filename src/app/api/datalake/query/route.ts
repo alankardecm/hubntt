@@ -80,16 +80,19 @@ export async function POST(request: NextRequest) {
       limit = 20,
       filterColumn = '',
       filterOperator = 'eq',
-      filterValue = '',
+      filterValue: rawFilterValue = '',
       filter2Column = '',
       filter2Operator = 'eq',
-      filter2Value = '',
+      filter2Value: rawFilter2Value = '',
       dateColumn = '',
       dateFrom = '',
       dateTo = '',
       timeBucket = 'none',
       numericBucketSize,
     } = body;
+
+    const filterValue = String(rawFilterValue ?? '');
+    const filter2Value = String(rawFilter2Value ?? '');
 
     if (!table || !isSafeTableName(table) || !isTableAllowed(table)) {
       return NextResponse.json<QueryResult>({ ok: false, data: [], error: 'Tabela invalida ou nao permitida.' }, { status: 400 });
@@ -206,8 +209,8 @@ export async function POST(request: NextRequest) {
       let filterWarning: FilterWarning | undefined;
       if (mainValue === 0 && safeFilterColumn && filterOperator === 'eq' && filterValue) {
         const existingValues = await getFilterDistinctValues(pool, escapedTable, safeFilterColumn);
-        if (existingValues.length > 0 && !existingValues.some((v) => v.toLowerCase() === filterValue.toLowerCase())) {
-          filterWarning = { column: safeFilterColumn, operator: filterOperator, value: filterValue, existingValues };
+        if (existingValues.length > 0 && !existingValues.some((v) => v.toLowerCase() === String(filterValue).toLowerCase())) {
+          filterWarning = { column: safeFilterColumn, operator: filterOperator, value: String(filterValue), existingValues };
         }
       }
 
@@ -256,8 +259,8 @@ export async function POST(request: NextRequest) {
     let filterWarning: FilterWarning | undefined;
     if (data.length === 0 && safeFilterColumn && filterOperator === 'eq' && filterValue) {
       const existingValues = await getFilterDistinctValues(pool, escapedTable, safeFilterColumn);
-      if (existingValues.length > 0 && !existingValues.some((v) => v.toLowerCase() === filterValue.toLowerCase())) {
-        filterWarning = { column: safeFilterColumn, operator: filterOperator, value: filterValue, existingValues };
+      if (existingValues.length > 0 && !existingValues.some((v) => v.toLowerCase() === String(filterValue).toLowerCase())) {
+        filterWarning = { column: safeFilterColumn, operator: filterOperator, value: String(filterValue), existingValues };
       }
     }
 
