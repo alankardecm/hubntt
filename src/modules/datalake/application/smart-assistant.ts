@@ -26,10 +26,11 @@ Tabelas disponiveis: ${tableNames}
 Mapeamento obrigatorio de termos de negocio:
 - "protocolo", "protocolos", "numero de protocolo", "quantidade de protocolo", "chamado", "chamados" -> fato_solicitacoes
 - "atendimento", "atendimentos", "sla de atendimento", "fila de atendimento", "atendente", "equipe" -> fato_solicitacoes
-- "nome do cliente", "cliente X", "contratos do cliente", "contratos por cliente", "quantos contratos" -> crm_Funter
-- "contrato", "contratos", "carteira", "churn", "assinante", "valor contrato", "receita" -> fato_contratos
-- Se o pedido menciona o NOME de um cliente especifico (ex: "cliente CLARO", "contratos da OI") use crm_Funter pois ela tem a coluna "cliente" com o nome.
-- Se o pedido e sobre metricas financeiras ou status de contratos sem mencionar nome de cliente, use fato_contratos.
+- "quantos contratos", "numero de contratos", "contratos por cliente", "contratos do cliente", "contratos aprovados", "contratos ativos", "contratos cancelados" -> crm_Funter
+- Se o pedido menciona o NOME de um cliente especifico (ex: "cliente CLARO", "contratos da OI") use crm_Funter.
+- crm_Funter tem UMA LINHA POR CONTRATO. Use para contar contratos. Coluna de data: dt_cadastro. Coluna de status: estagio. Coluna de nome do cliente: cliente.
+- fato_contratos tem UMA LINHA POR EVENTO (muitas por contrato). Use APENAS para metricas financeiras como valor_total agregado por periodo.
+- "valor total dos contratos", "receita", "faturamento", "soma de valor" -> fato_contratos com aggregation sum em valor_total.
 
 Responda APENAS com o nome da tabela. Se nenhuma for relevante, responda "none".`
         },
@@ -82,7 +83,7 @@ Mapeamento de termos de negocio para esta tabela:
 - Se a tabela for crm_solicitacoes: "protocolo" e "solicitacao" sao o mesmo conceito. COUNT(*) = quantidade de protocolos abertos.
 - Se a tabela for fato_solicitacoes: "atendimento" e o termo principal. Use sla_segundos para metricas de SLA e tempo. Para filtrar por nome de cliente use nome_cliente com operador "contains".
 - Se a tabela for fato_contratos: "contrato" e "assinante" sao equivalentes.
-- Se a tabela for crm_Funter: a coluna "cliente" tem o nome do cliente (ex: CLARO, OI, VIVO). Para filtrar por nome use filterColumn=cliente e filterOperator=contains. A coluna "contrato" identifica cada contrato. COUNT(*) = quantidade de contratos. Use "estagio" ou "status" para filtrar situacao do contrato.
+- Se a tabela for crm_Funter: cada linha e um contrato. Colunas: "cliente" (nome do cliente), "contrato" (numero), "estagio" (status do contrato: Aprovado, Cancelado, etc), "dt_cadastro" (data de cadastro do contrato - use como dateColumn), "valor" (valor do contrato). Para filtrar aprovados: filterColumn=estagio, filterOperator=contains, filterValue=Aprovado. Para filtrar por nome: filterColumn=cliente, filterOperator=contains. NUNCA use fato_contratos para contar contratos — use crm_Funter.
 
 Regras CRITICAS para gerar o JSON:
 - Gere ate 3 sugestoes de widgets no array "suggestions"
