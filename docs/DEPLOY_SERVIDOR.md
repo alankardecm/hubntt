@@ -53,6 +53,23 @@ http://10.250.110.238:4200
 
 ---
 
+## 4.2 Correções aplicadas em 2026-05-12
+
+### Bug: `c.toLowerCase is not a function`
+**Causa:** `filterValue` chegava como número vindo da IA (ex: ID numérico), e o código chamava `.toLowerCase()` sem garantir string.
+**Fix:** `src/app/api/datalake/query/route.ts` — conversão `String(filterValue)` na entrada e nas comparações.
+
+### Bug: Smart assistant retornando valores absurdos (ex: 556.337 contratos)
+**Causa:** A IA usava `fato_contratos` (tabela de eventos — N linhas por contrato) para contar contratos, e somava `valor_total` em vez de fazer COUNT.
+**Fix:** Mapeamento explícito no prompt: `crm_Funter` = uma linha por contrato, usar para contagens. `fato_contratos` = eventos, usar apenas para métricas financeiras.
+
+### Melhoria: Smart assistant com valores reais das colunas
+**O que faz:** Antes de gerar os widgets, o assistente busca os valores DISTINCT das colunas categóricas diretamente do MySQL e inclui no prompt.
+**Resultado:** A IA usa os valores exatos do banco (ex: o valor real do campo `estagio`) em vez de adivinhar. Elimina filtros sem match.
+**Arquivo:** `src/modules/datalake/application/smart-assistant.ts`
+
+---
+
 ## 4.1 Status do Bridge Baileys (2026-05-12)
 
 O bridge foi iniciado manualmente via terminal SSH e confirmado funcionando às 11:14 — mensagens dos grupos WhatsApp chegando em tempo real no dashboard de IA Comunicação.

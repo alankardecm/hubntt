@@ -177,11 +177,6 @@ Responda APENAS o JSON.`
 
     const content = response.choices[0]?.message?.content || '{}';
     const parsed = JSON.parse(content) as { suggestions?: DashboardSuggestion[] };
-    console.log('[smart-assistant] prompt:', prompt);
-    console.log('[smart-assistant] table:', table);
-    console.log('[smart-assistant] column samples:', JSON.stringify(columnSamples));
-    console.log('[smart-assistant] suggestions:', JSON.stringify(parsed.suggestions, null, 2));
-
     return {
       ok: true,
       prompt,
