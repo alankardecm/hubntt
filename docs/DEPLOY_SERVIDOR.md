@@ -55,6 +55,37 @@ O time de firewall foi acionado em 2026-05-12 para liberar essas portas.
 
 ---
 
+## 4.1 Status do Bridge Baileys (2026-05-12)
+
+O bridge foi iniciado manualmente via terminal SSH e confirmado funcionando às 11:14 — mensagens dos grupos WhatsApp chegando em tempo real no dashboard de IA Comunicação.
+
+Para subir o bridge no servidor:
+
+```bash
+cd /opt/DESENVOLVIMENTO_E_TESTE/hubntt
+
+# Primeira vez: instalar dependências do bridge
+npm run wa-bridge:install
+
+# Rodar para escanear o QR code (terminal interativo)
+npm run wa-bridge
+```
+
+Após escanear o QR code com o WhatsApp do número monitorado, a sessão fica salva em `08 - IA COMUNICACAO/bridge/auth_session/`. Em seguida, subir como processo permanente em outro terminal:
+
+```bash
+pm2 start npm --name "wa-bridge" -- run wa-bridge
+pm2 save
+```
+
+Para verificar se está recebendo mensagens:
+
+```bash
+pm2 logs wa-bridge --lines 30
+```
+
+---
+
 ## 5. Como foi feito o deploy (passo a passo)
 
 ### 5.1 Pré-requisitos resolvidos no servidor
