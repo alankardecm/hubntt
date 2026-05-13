@@ -87,6 +87,6 @@ export function sendText(
   const number = to.includes('@') ? to : to.replace(/\D/g, '');
   return evo(`/message/sendText/${instanceName}`, {
     method: 'POST',
-    body: JSON.stringify({ number, textMessage: { text } }),
+    body: JSON.stringify({ number, text }),
   });
 }
