@@ -1,130 +1,218 @@
+'use client';
+
 import Link from 'next/link';
+import Sidebar from '@/components/Sidebar';
+import { useEffect, useState } from 'react';
 import {
-  Mic, FileText, BarChart2, Database,
-  ShieldAlert, MessageSquare, ArrowRight,
-  LayoutGrid, Wifi
+  Activity, Bell, Bot, CheckCircle2,
+  Database, MessageSquare, Settings,
+  TriangleAlert, XCircle, RefreshCw,
+  ArrowRight, Zap,
 } from 'lucide-react';
 
-const modules = [
-  {
-    title: 'NetMeet',
-    href: '/dashboard/netmeet',
-    description: 'Crie a reuniao por link, concentre transcript e gere o resumo dentro do Hub.',
-    icon: Mic,
-    accent: '#379890',
-  },
-  {
-    title: 'RAG',
-    href: '/rag',
-    description: 'Busca semantica e contexto interno com base vetorial.',
-    icon: FileText,
-    accent: '#2d7d76',
-  },
-  {
-    title: 'Dashboard',
-    href: '/dashboards',
-    description: 'Construcao e visualizacao das dashboards do hub.',
-    icon: BarChart2,
-    accent: '#379890',
-  },
-  {
-    title: 'DataLake',
-    href: '/datalake',
-    description: 'Fontes, preview e construcao de dashboards.',
-    icon: Database,
-    accent: '#2d7d76',
-  },
-  {
-    title: 'Zabbix',
-    href: '/monitoring/zabbix',
-    description: 'Monitoramento de alarmes e eventos.',
-    icon: ShieldAlert,
-    accent: '#379890',
-  },
-  {
-    title: 'IA Comunicacao',
-    href: '/dashboard/comunicacao',
-    description: 'Sentimento, palavras-chave e analise de grupos.',
-    icon: MessageSquare,
-    accent: '#2d7d76',
-  },
+type HealthStatus = 'loading' | 'ok' | 'degraded' | 'error';
+
+type ServiceHealth = {
+  label: string;
+  status: 'ok' | 'error' | 'unknown';
+};
+
+const QUICK_LINKS = [
+  { label: 'Monitoramento', href: '/dashboard/noc',        icon: Activity,      desc: 'NOC e saúde dos serviços' },
+  { label: 'Zabbix',        href: '/monitoring/zabbix',    icon: Bell,          desc: 'Alarmes em tempo real' },
+  { label: 'IA Comunicação',href: '/dashboard/comunicacao',icon: Bot,           desc: 'WhatsApp e sentimento' },
+  { label: 'DataLake',      href: '/datalake',             icon: Database,      desc: 'Dados e dashboards' },
+  { label: 'Chat',          href: '/chat',                 icon: MessageSquare, desc: 'Assistente interno com IA' },
+  { label: 'Diagnóstico',   href: '/settings',             icon: Settings,      desc: 'Status das conexões' },
 ];
 
-export default function HubHomePage() {
+function StatusBadge({ status }: { status: HealthStatus }) {
+  if (status === 'loading') return (
+    <span className="flex items-center gap-1.5 text-gray-400 text-[11px] font-bold">
+      <RefreshCw className="h-3 w-3 animate-spin" /> Verificando...
+    </span>
+  );
+  if (status === 'ok') return (
+    <span className="flex items-center gap-1.5 text-emerald-600 text-[11px] font-black uppercase tracking-[0.15em]">
+      <CheckCircle2 className="h-3.5 w-3.5" /> Tudo operacional
+    </span>
+  );
+  if (status === 'degraded') return (
+    <span className="flex items-center gap-1.5 text-amber-500 text-[11px] font-black uppercase tracking-[0.15em]">
+      <TriangleAlert className="h-3.5 w-3.5" /> Degradado
+    </span>
+  );
   return (
-    <main className="min-h-screen bg-background text-foreground">
-      <div className="mx-auto max-w-6xl px-6 py-12">
+    <span className="flex items-center gap-1.5 text-red-500 text-[11px] font-black uppercase tracking-[0.15em]">
+      <XCircle className="h-3.5 w-3.5" /> Falha detectada
+    </span>
+  );
+}
 
-        {/* Hero Card */}
-        <div className="relative overflow-hidden rounded-[32px] border border-[#143230]/8 bg-white p-10 shadow-[0_30px_80px_-40px_rgba(20,50,48,0.18)]">
-          {/* Decorative background gradient */}
-          <div className="pointer-events-none absolute right-0 top-0 h-64 w-64 rounded-full bg-[#379890]/6 blur-3xl" />
-          <div className="pointer-events-none absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-[#379890]/4 blur-2xl" />
+export default function HubHomePage() {
+  const [health, setHealth] = useState<HealthStatus>('loading');
+  const [services, setServices] = useState<ServiceHealth[]>([]);
+  const [healthy, setHealthy] = useState(0);
+  const [total, setTotal] = useState(0);
+  const [hora, setHora] = useState('');
 
-          <div className="relative">
-            <span className="inline-flex items-center gap-2 rounded-full border border-[#379890]/20 bg-[#379890]/8 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.3em] text-[#379890]">
-              <span className="h-1.5 w-1.5 rounded-full bg-[#379890] shadow-[0_0_6px_rgba(55,152,144,0.6)]" />
-              Netturbo Hub · Ambiente Evolucao · Porta 4200
-            </span>
+  useEffect(() => {
+    setHora(new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }));
 
-            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] uppercase text-[#143230] lg:text-5xl">
-              Hub Operacional
-            </h1>
-            <p className="mt-3 max-w-2xl text-sm leading-relaxed text-stone-500">
-              Entrada principal para RAG, Dashboards, Data Lake, Zabbix e IA Comunicacao.
-              Ambiente com validacoes de seguranca e monitoramento de conexoes ativo.
-            </p>
+    fetch('/api/health/full')
+      .then((r) => r.json())
+      .then((d) => {
+        const svcs: ServiceHealth[] = Object.entries(d?.services ?? {}).map(([key, val]) => ({
+          label: key.charAt(0).toUpperCase() + key.slice(1),
+          status: (val as { status: string }).status === 'ok' ? 'ok' : 'error',
+        }));
+        const okCount = svcs.filter((s) => s.status === 'ok').length;
+        setServices(svcs);
+        setHealthy(okCount);
+        setTotal(svcs.length);
+        setHealth(okCount === svcs.length ? 'ok' : okCount > 0 ? 'degraded' : 'error');
+      })
+      .catch(() => setHealth('error'));
+  }, []);
 
-            <div className="mt-8 flex flex-wrap gap-3">
+  const now = new Date();
+  const greeting =
+    now.getHours() < 12 ? 'Bom dia' :
+    now.getHours() < 18 ? 'Boa tarde' : 'Boa noite';
+
+  return (
+    <div className="flex flex-1 min-h-0 overflow-hidden bg-background text-foreground font-sans">
+      <Sidebar />
+
+      <main className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="mx-auto max-w-5xl px-8 py-10 flex flex-col gap-8">
+
+          {/* ── HERO ── */}
+          <div className="rounded-[36px] border border-gray-200 bg-white p-10 shadow-[0_8px_40px_rgba(64,64,64,0.07)] relative overflow-hidden">
+            <div className="pointer-events-none absolute right-0 top-0 h-72 w-72 rounded-full bg-[#8DC63F]/8 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-12 -left-12 h-48 w-48 rounded-full bg-[#8DC63F]/5 blur-2xl" />
+
+            <div className="relative flex flex-col gap-5 lg:flex-row lg:items-center lg:justify-between">
+              <div>
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="h-4 w-4 text-[#8DC63F]" />
+                  <span className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
+                    Netturbo Hub Operacional
+                  </span>
+                </div>
+                <h1 className="text-4xl font-[1000] tracking-[-0.05em] text-[#404040] lg:text-5xl">
+                  {greeting},<br />
+                  <span className="text-[#8DC63F]">Netturbo.</span>
+                </h1>
+                <p className="mt-3 text-sm text-gray-400 leading-relaxed max-w-md">
+                  Central operacional da empresa. Acesse monitoramento, comunicação, dados e IA em um só lugar.
+                </p>
+              </div>
+
+              {/* Status summary */}
+              <div className="flex flex-col items-start lg:items-end gap-3">
+                <StatusBadge status={health} />
+                {total > 0 && (
+                  <div className="flex gap-2">
+                    {services.map((svc) => (
+                      <div
+                        key={svc.label}
+                        title={svc.label}
+                        className={`h-2 w-8 rounded-full ${svc.status === 'ok' ? 'bg-[#8DC63F]' : 'bg-red-400'}`}
+                      />
+                    ))}
+                  </div>
+                )}
+                {total > 0 && (
+                  <p className="text-[10px] text-gray-400 font-bold">
+                    {healthy}/{total} serviços operacionais
+                  </p>
+                )}
+                {hora && (
+                  <p className="text-[10px] text-gray-300 font-bold uppercase tracking-[0.2em]">
+                    Verificado às {hora}
+                  </p>
+                )}
+              </div>
+            </div>
+
+            <div className="relative mt-8 flex gap-3">
               <Link
                 href="/dashboard"
-                className="group inline-flex items-center gap-2 rounded-full bg-[#379890] px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_12px_30px_-12px_rgba(55,152,144,0.5)] transition-all duration-200 hover:-translate-y-0.5 hover:bg-[#2d7d76] hover:shadow-[0_16px_36px_-12px_rgba(55,152,144,0.55)]"
+                className="inline-flex items-center gap-2 rounded-full bg-[#8DC63F] px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-white shadow-[0_8px_24px_-8px_rgba(141,198,63,0.5)] transition-all hover:-translate-y-0.5 hover:bg-[#7ab030]"
               >
-                <LayoutGrid className="h-3.5 w-3.5" />
                 Abrir Workspace
+                <ArrowRight className="h-3.5 w-3.5" />
               </Link>
               <Link
-                href="/dashboard/status"
-                className="group inline-flex items-center gap-2 rounded-full border border-[#379890]/30 bg-white px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-[#379890] transition-all duration-200 hover:-translate-y-0.5 hover:border-[#379890]/60 hover:bg-[#379890]/4 hover:shadow-[0_8px_20px_-8px_rgba(55,152,144,0.2)]"
+                href="/settings"
+                className="inline-flex items-center gap-2 rounded-full border border-gray-200 bg-white px-6 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-gray-500 transition-all hover:-translate-y-0.5 hover:border-[#8DC63F]/40 hover:text-[#8DC63F]"
               >
-                <Wifi className="h-3.5 w-3.5" />
-                Status das Conexoes
+                <Settings className="h-3.5 w-3.5" />
+                Ver Diagnóstico
               </Link>
             </div>
           </div>
-        </div>
 
-        {/* Modules Grid */}
-        <section className="mt-6 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-          {modules.map((module) => {
-            const Icon = module.icon;
-            return (
-              <Link
-                key={module.title}
-                href={module.href}
-                className="group relative overflow-hidden rounded-[24px] border border-[#143230]/8 bg-white p-6 shadow-[0_8px_30px_-12px_rgba(20,50,48,0.12)] transition-all duration-250 hover:-translate-y-1 hover:border-[#379890]/20 hover:shadow-[0_16px_40px_-14px_rgba(55,152,144,0.2)]"
-              >
-                {/* Hover accent line */}
-                <div className="absolute bottom-0 left-0 h-0.5 w-0 rounded-full bg-[#379890]/50 transition-all duration-300 group-hover:w-full" />
-
-                <div className="flex items-start justify-between">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-2xl border border-[#143230]/8 bg-[#379890]/8 transition-colors duration-200 group-hover:bg-[#379890]/14">
-                    <Icon className="h-4.5 w-4.5 text-[#379890]" strokeWidth={2} />
+          {/* ── ACESSO RÁPIDO ── */}
+          <div>
+            <p className="mb-4 text-[10px] font-black uppercase tracking-[0.3em] text-gray-400 px-1">
+              Acesso rápido
+            </p>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              {QUICK_LINKS.map((link) => (
+                <Link
+                  key={link.href}
+                  href={link.href}
+                  className="group flex items-center gap-4 rounded-[24px] border border-gray-200 bg-white p-5 shadow-[0_2px_12px_rgba(64,64,64,0.05)] transition-all hover:-translate-y-0.5 hover:border-[#8DC63F]/30 hover:shadow-[0_8px_24px_rgba(141,198,63,0.10)]"
+                >
+                  <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[#8DC63F]/10 transition-colors group-hover:bg-[#8DC63F]/20">
+                    <link.icon className="h-4.5 w-4.5 text-[#8DC63F]" />
                   </div>
-                  <ArrowRight className="h-4 w-4 translate-x-1 text-stone-300 opacity-0 transition-all duration-200 group-hover:translate-x-0 group-hover:text-[#379890] group-hover:opacity-100" />
-                </div>
+                  <div className="min-w-0 flex-1">
+                    <p className="text-[13px] font-black uppercase tracking-[0.04em] text-[#404040]">{link.label}</p>
+                    <p className="mt-0.5 text-[11px] text-gray-400 truncate">{link.desc}</p>
+                  </div>
+                  <ArrowRight className="h-3.5 w-3.5 text-gray-300 opacity-0 transition-all group-hover:text-[#8DC63F] group-hover:opacity-100" />
+                </Link>
+              ))}
+            </div>
+          </div>
 
-                <h2 className="mt-4 text-[15px] font-black uppercase tracking-[0.04em] text-[#143230]">
-                  {module.title}
-                </h2>
-                <p className="mt-1.5 text-[13px] leading-relaxed text-stone-500">
-                  {module.description}
+          {/* ── STATUS COMPACTO ── */}
+          {services.length > 0 && (
+            <div className="rounded-[28px] border border-gray-200 bg-white p-6 shadow-[0_2px_12px_rgba(64,64,64,0.05)]">
+              <div className="flex items-center justify-between mb-5">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-gray-400">
+                  Status das conexões
                 </p>
-              </Link>
-            );
-          })}
-        </section>
-      </div>
-    </main>
+                <Link
+                  href="/settings"
+                  className="text-[10px] font-black uppercase tracking-[0.2em] text-[#8DC63F] hover:underline"
+                >
+                  Ver detalhes →
+                </Link>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                {services.map((svc) => (
+                  <div
+                    key={svc.label}
+                    className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.12em] ${
+                      svc.status === 'ok'
+                        ? 'border-emerald-200 bg-emerald-50 text-emerald-600'
+                        : 'border-red-200 bg-red-50 text-red-500'
+                    }`}
+                  >
+                    <span className={`h-1.5 w-1.5 rounded-full ${svc.status === 'ok' ? 'bg-emerald-500' : 'bg-red-400 animate-pulse'}`} />
+                    {svc.label}
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+        </div>
+      </main>
+    </div>
   );
 }
