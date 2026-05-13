@@ -4,7 +4,107 @@ Este arquivo serve como checkpoint oficial para retomada rapida do HUB na proxim
 
 ---
 
-## PONTO DE RECUPERACAO ATUAL (11/05/2026 — fim de sessao)
+## PONTO DE RECUPERACAO ATUAL (13/05/2026 — fim de sessao)
+
+### Ambiente de producao (servidor Linux)
+
+- Servidor: `SRV-CT-TurboWS` — IP `10.250.110.238`
+- Projeto: `/opt/DESENVOLVIMENTO_E_TESTE/hubntt`
+- Todos os processos rodam via **PM2 como root**
+
+### Processos PM2 ativos
+
+| ID | Nome | Porta | Status |
+|----|------|-------|--------|
+| 0 | netmeet-monitor | — | online |
+| 1 | netmeet-dashboard | — | online |
+| 3 | hub-ntt-73 | 4200 | online |
+| 7 | evolution-api | 8080 | online |
+
+### Subir tudo no servidor (caso reinicie)
+
+```bash
+sudo su
+pm2 resurrect
+```
+
+Se algum processo não subir:
+
+```bash
+cd /opt/DESENVOLVIMENTO_E_TESTE/hubntt && pm2 start hub-ntt-73
+cd /opt/evolution-api && pm2 start evolution-api
+```
+
+### Deploy padrão (após git push)
+
+```bash
+sudo su
+cd /opt/DESENVOLVIMENTO_E_TESTE/hubntt
+pm2 stop hub-ntt-73 && git pull origin master && npm run build && pm2 start hub-ntt-73
+pm2 save
+```
+
+### Estado do WhatsApp
+
+- Evolution API v2.3.7 conectada ao número `5519996780064`
+- Manager: `http://10.250.110.238:8080/manager`
+- API Key: `netturbo-evolution-key-2026`
+- Instância: `netturbo-test`
+- Webhook: `http://localhost:4200/api/evolution/webhook`
+- Bot responde mensagens diretas de números na whitelist
+- Se desconectar: acessar manager → clicar na instância → escanear QR
+
+### RAG / Consulta Interna
+
+- **Fonte primária**: BookStack (TurboDocs) em `http://turbodocs.netturbosolucoes.com.br`
+  - IP interno: `10.250.120.90` — rota liberada pelo TI em 13/05/2026
+  - Token: `GDWxFBhMbFVr37kuba7cvqKp7QkYiwab:ij8M7VOvwiqhIzFnvBnVCgQOaV8qUUQ9`
+- **Fallback**: Pinecone (`netturbo-rag`)
+- Disponível no Chat (modo Consulta Interna) e na página RAG
+
+### Como retomar amanhã
+
+Cole no chat:
+
+```
+"Continuar o HUB Netturbo. Servidor SRV-CT-TurboWS (10.250.110.238).
+PM2 com hub-ntt-73 (porta 4200) e evolution-api (porta 8080) rodando como root.
+Evolution API v2.3.7 conectada ao número 5519996780064 (netturbo-test).
+Bot WhatsApp ativo com Zabbix + DataLake. RAG via BookStack (TurboDocs) funcionando.
+Retomar a partir do PONTO_RECUPERACAO_HUB.md."
+```
+
+### Pendências abertas
+
+1. **Diagnóstico (`/settings`)** — ainda usa tema escuro antigo, fora do padrão Netturbo claro
+2. **Bot WhatsApp** — ainda recebe erros 401 para mensagens antigas em cache (residuo da migração wa-bridge → Evolution API); vai sumir naturalmente com o tempo
+3. **Autenticação** — planejada via Active Directory (Azure AD / LDAP); não iniciada
+4. **Supabase → PostgreSQL local** — PostgreSQL já instalado no servidor; migração dos dados do Supabase não iniciada
+5. **Alertas proativos Zabbix** — bot enviar mensagem automática ao detectar alarme DISASTER
+
+### Variáveis de ambiente no servidor (`/opt/DESENVOLVIMENTO_E_TESTE/hubntt/.env`)
+
+Variáveis adicionadas em 13/05/2026 (verificar se estão presentes):
+
+```
+EVOLUTION_API_URL=http://localhost:8080
+EVOLUTION_API_KEY=netturbo-evolution-key-2026
+EVOLUTION_INSTANCE_NAME=netturbo-test
+BOT_WHITELIST=5519995483158,5519997670137,5519998073842,5519993967033
+BOOKSTACK_BASE_URL=http://turbodocs.netturbosolucoes.com.br
+BOOKSTACK_TOKEN_ID=GDWxFBhMbFVr37kuba7cvqKp7QkYiwab
+BOOKSTACK_TOKEN_SECRET=ij8M7VOvwiqhIzFnvBnVCgQOaV8qUUQ9
+```
+
+### Último commit
+
+- Branch: `master`
+- Último commit: `0c9f66c` — `docs: changelog completo da sessao 2026-05-13`
+- GitHub: `https://github.com/netturbo-tech/hubntt`
+
+---
+
+## PONTO DE RECUPERACAO ANTERIOR (11/05/2026 — fim de sessao)
 
 ### Ambiente ativo
 
