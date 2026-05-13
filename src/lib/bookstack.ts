@@ -119,7 +119,7 @@ export async function searchBookStack(query: string, count = 8): Promise<BookSta
 
       sources.push({
         title: page.name,
-        source: `${BASE}${pages[i].url}`,
+        source: resolveUrl(pages[i].url),
         imageUrl: firstImage,
       });
 
