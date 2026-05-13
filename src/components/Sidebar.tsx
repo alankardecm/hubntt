@@ -6,8 +6,8 @@ import { Suspense } from 'react';
 import {
   Home, Grid, FileText, MessageSquare,
   Settings, LogOut,
-  Activity, Database, Bell, BarChart2, Wallet,
-  Mic, Bot, TriangleAlert, Smartphone
+  Activity, Database, Bell, BarChart2,
+  Bot, TriangleAlert, Smartphone
 } from 'lucide-react';
 
 const NAV_ITEMS = [
@@ -19,8 +19,6 @@ const NAV_ITEMS = [
   { icon: Bot,           href: '/dashboard/comunicacao',    label: 'IA Comunicação' },
   { icon: Smartphone,   href: '/dashboard/whatsapp',       label: 'WhatsApp' },
   { icon: TriangleAlert, href: '/dashboard/alertas',    label: 'Alertas' },
-  { icon: Wallet,        href: '/dashboard/custos',     label: 'Custos' },
-  { icon: Mic,           href: '/dashboard/netmeet',    label: 'NetMeet' },
   { icon: Database,      href: '/datalake',             label: 'DataLake' },
   { icon: FileText,      href: '/rag',                  label: 'RAG' },
   { icon: MessageSquare, href: '/chat',                 label: 'Chat' },
