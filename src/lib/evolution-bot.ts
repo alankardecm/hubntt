@@ -1,0 +1,277 @@
+import OpenAI from 'openai';
+import {
+  getActiveProblems,
+  getZabbixSummary,
+  SEVERITY_LABEL,
+  type ZabbixProblem,
+} from '@/lib/zabbix';
+import { getMysqlPool, isMysqlConfigured, getMysqlConfig } from '@/infrastructure/datalake/mysql-client';
+import type { RowDataPacket } from 'mysql2';
+
+const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+
+// ── Zabbix ────────────────────────────────────────────────────────────────────
+
+function ageLabel(clockStr: string): string {
+  const secs = Math.floor(Date.now() / 1000) - Number(clockStr);
+  if (secs < 60)  return `${secs}s`;
+  if (secs < 3600) return `${Math.floor(secs / 60)}min`;
+  const h = Math.floor(secs / 3600);
+  const m = Math.floor((secs % 3600) / 60);
+  return m > 0 ? `${h}h${m}min` : `${h}h`;
+}
+
+function sevEmoji(sev: string): string {
+  return { '5': '🔴', '4': '🟠', '3': '🟡', '2': '🔵', '1': '⚪', '0': '⚫' }[sev] ?? '❓';
+}
+
+async function zabbixStatusReport(): Promise<string> {
+  const [summary, problems] = await Promise.all([
+    getZabbixSummary(),
+    getActiveProblems(20),
+  ]);
+
+  const ok = summary.totalProblems === 0;
+  const lines: string[] = [];
+
+  lines.push(`📡 *NOC Netturbo — Status Zabbix*`);
+  lines.push(`🕐 ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo', dateStyle: 'short', timeStyle: 'short' })}`);
+  lines.push('');
+
+  if (ok) {
+    lines.push('✅ Sem problemas ativos no momento');
+  } else {
+    lines.push(`🚨 *${summary.totalProblems} problema${summary.totalProblems > 1 ? 's' : ''} ativo${summary.totalProblems > 1 ? 's' : ''}*`);
+    if (summary.disasters > 0)    lines.push(`🔴 Desastres: ${summary.disasters}`);
+    if (summary.highSeverity > 0) lines.push(`🟠 Alta: ${summary.highSeverity}`);
+    lines.push('');
+
+    problems.slice(0, 10).forEach((p: ZabbixProblem, i) => {
+      const host = p.hosts?.[0]?.name ?? '—';
+      const sev  = SEVERITY_LABEL[p.severity] ?? p.severity;
+      lines.push(`${i + 1}. ${sevEmoji(p.severity)} *${host}* — ${p.name}`);
+      lines.push(`   ${sev} · há ${ageLabel(p.clock)}`);
+    });
+
+    if (problems.length > 10) {
+      lines.push(`   _...e mais ${problems.length - 10} problemas_`);
+    }
+  }
+
+  lines.push('');
+  lines.push(`📊 Hosts: ${summary.hostsUp} ok | ${summary.hostsDown} down | ${summary.hostsUnknown} desconhecido`);
+  lines.push(`_Hub Netturbo_`);
+
+  return lines.join('\n');
+}
+
+// ── DataLake ──────────────────────────────────────────────────────────────────
+
+// Schema fixo das tabelas autorizadas — evita o AI usar tabelas erradas
+const DATALAKE_SCHEMA = `
+Tabelas disponíveis (USE APENAS ESTAS):
+
+fato_solicitacoes — protocolos/chamados de suporte (dados de 2026)
+  colunas: protocolo(bigint), status(varchar), data_abertura(datetime), data_conclusao(datetime),
+           tipo(varchar), atendente(varchar), equipe(varchar), id_cliente(bigint), etiqueta(varchar)
+  status reais (SOMENTE ESTES EXISTEM): 'Encerramento', 'Cancelado'
+  ATENÇÃO: NÃO existe status 'Aberto' nem 'Em Atendimento' nesta tabela
+  "protocolos abertos em X" = protocolos cuja data_abertura está no período X (NÃO filtre por status)
+  "protocolos em aberto" ou "sem conclusão" = WHERE data_conclusao IS NULL
+
+fato_contratos — contratos ativos e histórico (dados atualizados)
+  colunas: status(varchar), data_evento(datetime), id_cliente(bigint), id_contrato(bigint), valor_total(decimal)
+  Para nome do cliente: JOIN dim_cliente ON fato_contratos.id_cliente = dim_cliente.id_cliente
+  Para detalhes do contrato: JOIN dim_contrato ON fato_contratos.id_contrato = dim_contrato.id_contrato
+
+dim_cliente — cadastro de clientes
+  colunas: id_cliente(bigint), cod_cliente(bigint), nome_cliente(varchar)
+
+dim_contrato — detalhes dos contratos
+  colunas: id_contrato(bigint), cod_cliente(bigint), num_contrato(varchar), tipo_contrato(varchar),
+           valor_mensal(decimal), status(varchar), data_cadastro(datetime), data_cancelamento(datetime)
+
+REGRAS DE SQL:
+- "abertos em [período]" = filtrar por data_abertura, NUNCA adicionar filtro de status
+- "sem conclusão" ou "em aberto" = WHERE data_conclusao IS NULL
+- Contar por período: SELECT COUNT(*) FROM fato_solicitacoes WHERE DATE(data_abertura) BETWEEN '2026-03-01' AND '2026-03-31'
+- Clientes com mais protocolos: SELECT dc.nome_cliente, COUNT(*) AS total FROM fato_solicitacoes fs JOIN dim_cliente dc ON fs.id_cliente = dc.id_cliente WHERE DATE(fs.data_abertura) BETWEEN '...' AND '...' GROUP BY dc.nome_cliente ORDER BY total DESC LIMIT 10
+- NUNCA filtre por status = 'Aberto' — esse status não existe
+- NUNCA use crm_solicitacoes, fato_atendimentos ou outras tabelas não listadas acima
+`.trim();
+
+async function getDataFreshness(): Promise<string> {
+  if (!isMysqlConfigured()) return '';
+  try {
+    const pool = getMysqlPool();
+    const [r] = await pool.query<RowDataPacket[]>(
+      `SELECT MAX(data_abertura) AS max_abertura FROM fato_solicitacoes`
+    );
+    const max = r[0]?.max_abertura;
+    if (!max) return '';
+    const d = new Date(max as string);
+    return `Dados de solicitações disponíveis até: ${d.toLocaleDateString('pt-BR')}.`;
+  } catch { return ''; }
+}
+
+async function runDatalakeQuery(sql: string): Promise<string> {
+  if (!isMysqlConfigured()) return 'DataLake não configurado.';
+  if (!/^\s*SELECT\s/i.test(sql)) return 'Apenas consultas SELECT são permitidas.';
+
+  const pool = getMysqlPool();
+  let rows: RowDataPacket[];
+  try {
+    [rows] = await pool.query<RowDataPacket[]>(sql);
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return `Erro SQL: ${msg}`;
+  }
+
+  if (!Array.isArray(rows) || rows.length === 0) return 'Nenhum resultado encontrado.';
+
+  const cols  = Object.keys(rows[0]);
+  const lines = rows.slice(0, 15).map((row) =>
+    cols.map((c) => `${c}: ${row[c] ?? '—'}`).join(' | ')
+  );
+
+  let text = lines.join('\n');
+  if (rows.length > 15) text += `\n_...e mais ${rows.length - 15} linhas_`;
+  return text;
+}
+
+// ── Orquestrador com function calling ────────────────────────────────────────
+
+const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
+  {
+    type: 'function',
+    function: {
+      name: 'zabbix_status',
+      description: 'Retorna o status atual do Zabbix: problemas ativos, hosts down, severidades.',
+      parameters: { type: 'object', properties: {} },
+    },
+  },
+  {
+    type: 'function',
+    function: {
+      name: 'datalake_query',
+      description: 'Executa uma query SQL SELECT no DataLake MySQL da Netturbo e retorna os resultados.',
+      parameters: {
+        type: 'object',
+        properties: {
+          sql: {
+            type: 'string',
+            description: 'Query SQL SELECT a executar. Deve ser segura, sem subconsultas destrutivas.',
+          },
+        },
+        required: ['sql'],
+      },
+    },
+  },
+];
+
+export async function handleBotMessage(
+  text: string,
+  senderName?: string,
+): Promise<string> {
+  // Resposta imediata para saudações simples
+  const lower = text.toLowerCase().trim();
+  if (['oi', 'olá', 'ola', 'opa', 'hey', 'hi'].includes(lower)) {
+    const name = senderName ? `, ${senderName.split(' ')[0]}` : '';
+    return [
+      `Olá${name}! 👋 Sou o assistente do *Hub Netturbo*.`,
+      '',
+      'Posso te ajudar com:',
+      '• `status` — situação atual do Zabbix',
+      '• Perguntas sobre dados do DataLake',
+      '',
+      'Ex: _"quais os hosts com problema agora?"_ ou _"quantos chamados abertos hoje?"_',
+    ].join('\n');
+  }
+
+  // Atalho direto para status
+  if (['status', 'noc', 'alarmes', 'problemas'].includes(lower)) {
+    return zabbixStatusReport();
+  }
+
+  try {
+    const freshness = await getDataFreshness().catch(() => '');
+
+    const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
+      {
+        role: 'system',
+        content: [
+          'Você é o assistente do Hub Netturbo, respondendo via WhatsApp.',
+          'Seja objetivo e use formatação simples (negrito com *, itálico com _).',
+          DATALAKE_SCHEMA,
+          freshness,
+          'Para perguntas sobre rede, infraestrutura, hosts ou alarmes, use zabbix_status.',
+          'Para perguntas sobre chamados, protocolos, contratos ou clientes, use datalake_query com as tabelas acima.',
+          'Quando retornar zero resultados, sugira ajustar a data para o período disponível.',
+          'Se não souber, diga claramente o que pode fazer.',
+        ].filter(Boolean).join('\n'),
+      },
+      { role: 'user', content: text },
+    ];
+
+    const first = await openai.chat.completions.create({
+      model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4o-mini',
+      messages,
+      tools: TOOLS,
+      tool_choice: 'auto',
+      max_tokens: 1000,
+    });
+
+    const choice = first.choices[0];
+
+    // Sem function call → resposta direta
+    if (choice.finish_reason !== 'tool_calls' || !choice.message.tool_calls?.length) {
+      return choice.message.content ?? 'Não entendi. Tente: *status*, ou descreva o que quer saber.';
+    }
+
+    // Executa TODOS os tool calls e responde a todos (OpenAI exige resposta para cada um)
+    const toolResponses: OpenAI.Chat.ChatCompletionMessageParam[] = [];
+
+    for (const call of choice.message.tool_calls) {
+      const args = JSON.parse(call.function.arguments || '{}') as Record<string, string>;
+      let result = '';
+
+      if (call.function.name === 'zabbix_status') {
+        result = await zabbixStatusReport();
+      } else if (call.function.name === 'datalake_query') {
+        console.log('[Bot] SQL:', args.sql);
+        result = await runDatalakeQuery(args.sql ?? '');
+        console.log('[Bot] resultado:', result.slice(0, 300));
+      }
+
+      toolResponses.push({
+        role: 'tool',
+        tool_call_id: call.id,
+        content: result || 'Sem resultado.',
+      });
+    }
+
+    // Se foi só zabbix e sem outros, retorna direto sem segunda chamada ao AI
+    const onlyZabbix = choice.message.tool_calls.every(c => c.function.name === 'zabbix_status');
+    if (onlyZabbix && toolResponses.length === 1) {
+      return toolResponses[0].content as string;
+    }
+
+    // Segunda chamada: AI formata todos os resultados em resposta coerente
+    const second = await openai.chat.completions.create({
+      model: process.env.OPENAI_CHAT_MODEL ?? 'gpt-4o-mini',
+      messages: [
+        ...messages,
+        choice.message,
+        ...toolResponses,
+      ],
+      max_tokens: 800,
+    });
+
+    return second.choices[0].message.content
+      ?? 'Consulta executada mas não consegui formatar a resposta.';
+
+  } catch (err) {
+    console.error('[Bot] erro:', err);
+    return '⚠️ Erro ao processar sua mensagem. Tente novamente.';
+  }
+}

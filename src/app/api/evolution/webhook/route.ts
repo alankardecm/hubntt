@@ -1,0 +1,158 @@
+import { NextResponse } from 'next/server';
+import { persistInboundCommunication } from '@/modules/communication/application/persist-inbound-communication';
+import { handleBotMessage } from '@/lib/evolution-bot';
+import { sendText } from '@/lib/evolution-api';
+import { registerLid, resolveReplyTarget, isRegistered, isWhitelisted } from '@/lib/bot-registry';
+
+// Payload da Evolution API v1.x — evento MESSAGES_UPSERT
+// data é um array de mensagens
+type EvoMessageItem = {
+  key: {
+    remoteJid: string;
+    fromMe: boolean;
+    id: string;
+    participant?: string;
+  };
+  message?: {
+    conversation?: string;
+    extendedTextMessage?: { text: string };
+    imageMessage?: { caption?: string };
+    audioMessage?: object;
+    videoMessage?: { caption?: string };
+    documentMessage?: { title?: string };
+    stickerMessage?: object;
+  };
+  messageType: string;
+  messageTimestamp: number;
+  pushName?: string;
+};
+
+type EvoWebhookPayload = {
+  event: string;        // "MESSAGES_UPSERT" em v1.x
+  instance: string;
+  data: EvoMessageItem | EvoMessageItem[];
+  apikey?: string;
+};
+
+function extractText(item: EvoMessageItem): string {
+  const m = item.message ?? {};
+  const raw =
+    m.conversation ||
+    m.extendedTextMessage?.text ||
+    m.imageMessage?.caption ||
+    m.videoMessage?.caption ||
+    m.documentMessage?.title ||
+    '';
+  if (raw) return raw;
+
+  const labels: Record<string, string> = {
+    audioMessage:    '[audio recebido]',
+    imageMessage:    '[imagem recebida]',
+    videoMessage:    '[video recebido]',
+    documentMessage: '[documento recebido]',
+    stickerMessage:  '[figurinha recebida]',
+    locationMessage: '[localizacao recebida]',
+    contactMessage:  '[contato recebido]',
+  };
+  return labels[item.messageType] ?? '';
+}
+
+function isGroup(jid: string) {
+  return jid.endsWith('@g.us');
+}
+
+// Normaliza o nome do evento para comparação
+function isMessageUpsert(event: string) {
+  const e = event.toLowerCase().replace(/[._]/g, '');
+  return e === 'messagesupsert';
+}
+
+export async function POST(req: Request) {
+  const payload = (await req.json()) as EvoWebhookPayload;
+
+  // Ignorar tudo que não seja mensagem nova em tempo real
+  if (!isMessageUpsert(payload.event)) {
+    return NextResponse.json({ ok: true, skipped: true, event: payload.event });
+  }
+
+  // v1.x envia array; normaliza para sempre trabalhar com array
+  const items = Array.isArray(payload.data) ? payload.data : [payload.data];
+  const instance = payload.instance;
+
+  const incoming = items.filter(item => !item.key.fromMe);
+
+  // Persiste todas as mensagens no pipeline existente
+  const results = await Promise.allSettled(
+    incoming.map(item => {
+      const jid   = item.key.remoteJid;
+      const group = isGroup(jid);
+
+      return persistInboundCommunication({
+        source:           'whatsapp',
+        sourceType:       group ? 'whatsapp_group' : 'whatsapp_direct',
+        conversationId:   jid,
+        conversationName: group ? jid.split('@')[0] : (item.pushName ?? jid.split('@')[0]),
+        senderId:         item.key.participant ?? (group ? null : jid),
+        senderName:       item.pushName ?? null,
+        messageId:        item.key.id,
+        messageText:      extractText(item),
+        messageType:      item.messageType,
+        mediaBase64:      null,
+        mediaMimeType:    null,
+        bridgeName:       `evolution:${instance}`,
+        sentAt:           item.messageTimestamp,
+      });
+    })
+  );
+
+  // Bot: responde mensagens diretas (não de grupo) com texto
+  for (const item of incoming) {
+    const jid       = item.key.remoteJid;
+    const text      = extractText(item).trim();
+    const isTextMsg = item.messageType === 'conversation' || item.messageType === 'extendedTextMessage';
+    const isDirect  = !isGroup(jid) && isTextMsg;
+
+    if (!isDirect || !text) continue;
+
+    // Comando /start <numero> — registra mapeamento LID → número real
+    const startMatch = text.match(/^\/start\s+([\d\s()\-+]+)$/i);
+    if (startMatch && jid.includes('@lid')) {
+      const lid   = jid.split('@')[0];
+      const phone = startMatch[1].replace(/\D/g, '');
+      const full  = phone.startsWith('55') ? phone : `55${phone}`;
+      registerLid(lid, full);
+      sendText(instance, full,
+        '✅ Número registrado! Agora posso responder suas mensagens.\n\nTente: *status* ou *oi*'
+      ).catch(err => console.error('[Bot] erro ao confirmar /start:', err));
+      continue;
+    }
+
+    // Resolve destino: número real (se LID registrado) ou número do JID
+    const replyPhone = resolveReplyTarget(jid);
+    const replyTo    = replyPhone ?? (!jid.includes('@lid') ? jid.split('@')[0] : null);
+
+    // Verifica whitelist
+    if (replyTo && !isWhitelisted(replyTo)) {
+      console.warn(`[Bot] número não autorizado: ${replyTo}`);
+      continue;
+    }
+
+    if (!replyTo) {
+      // LID ainda não registrado — tenta avisar (vai falhar silenciosamente)
+      sendText(instance, jid,
+        '👋 Para ativar o assistente, envie:\n*/start SEU_NUMERO*\n\nEx: `/start 19999999999`'
+      ).catch(() => console.warn(`[Bot] @lid sem registro, não respondeu: ${jid}`));
+      continue;
+    }
+
+    // Fire-and-forget
+    handleBotMessage(text, item.pushName ?? undefined)
+      .then(reply => sendText(instance, replyTo, reply))
+      .catch(err  => console.error('[Bot] falha ao responder:', err));
+  }
+
+  const saved  = results.filter(r => r.status === 'fulfilled').length;
+  const failed = results.filter(r => r.status === 'rejected').length;
+
+  return NextResponse.json({ ok: true, saved, failed });
+}
