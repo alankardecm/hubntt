@@ -102,13 +102,13 @@ export default function ChatGeral() {
       <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 border-b border-[#143230]/8 bg-white/80 px-8 py-5 backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-4 border-b border-[#404040]/8 bg-white/80 px-8 py-5 backdrop-blur-xl">
           <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#379890]/12 ring-1 ring-[#379890]/20">
-              <Bot className="h-5 w-5 text-[#379890]" />
+            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#8DC63F]/12 ring-1 ring-[#8DC63F]/20">
+              <Bot className="h-5 w-5 text-[#8DC63F]" />
             </div>
             <div>
-              <h1 className="text-base font-black tracking-[-0.03em] text-[#143230]">Assistente Netturbo</h1>
+              <h1 className="text-base font-black tracking-[-0.03em] text-[#404040]">Assistente Netturbo</h1>
               <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#617472]">
                 {loading ? 'Digitando...' : messages.length === 0 ? 'Pronto para ajudar' : `${messages.length} mensagens`}
               </p>
@@ -118,7 +118,7 @@ export default function ChatGeral() {
           {messages.length > 0 && (
             <button
               onClick={clear}
-              className="flex items-center gap-2 rounded-xl border border-[#143230]/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-[#617472] transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+              className="flex items-center gap-2 rounded-xl border border-[#404040]/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-[#617472] transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-500"
             >
               <Trash2 className="h-3.5 w-3.5" />
               Limpar
@@ -131,11 +131,11 @@ export default function ChatGeral() {
 
           {messages.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
-              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#379890]/12 ring-1 ring-[#379890]/20">
-                <Sparkles className="h-7 w-7 text-[#379890]" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#8DC63F]/12 ring-1 ring-[#8DC63F]/20">
+                <Sparkles className="h-7 w-7 text-[#8DC63F]" />
               </div>
               <div>
-                <h2 className="text-2xl font-[950] tracking-[-0.04em] text-[#143230]">Como posso ajudar?</h2>
+                <h2 className="text-2xl font-[950] tracking-[-0.04em] text-[#404040]">Como posso ajudar?</h2>
                 <p className="mt-2 text-sm text-[#617472]">Pergunte qualquer coisa, peça para reescrever um texto, analisar uma situação...</p>
               </div>
 
@@ -144,7 +144,7 @@ export default function ChatGeral() {
                   <button
                     key={prompt}
                     onClick={() => applyQuickPrompt(prompt)}
-                    className="rounded-2xl border border-[#143230]/10 bg-white px-5 py-4 text-left text-[12px] font-bold text-[#143230] transition-all hover:border-[#379890]/30 hover:bg-[#379890]/5 hover:text-[#379890]"
+                    className="rounded-2xl border border-[#404040]/10 bg-white px-5 py-4 text-left text-[12px] font-bold text-[#404040] transition-all hover:border-[#8DC63F]/30 hover:bg-[#8DC63F]/5 hover:text-[#8DC63F]"
                   >
                     {prompt}
                   </button>
@@ -162,16 +162,16 @@ export default function ChatGeral() {
               >
                 <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-black ${
                   isUser
-                    ? 'bg-[#143230] text-white'
-                    : 'bg-[#379890]/12 text-[#379890]'
+                    ? 'bg-[#404040] text-white'
+                    : 'bg-[#8DC63F]/12 text-[#8DC63F]'
                 }`}>
                   {isUser ? 'EU' : <Bot className="h-4 w-4" />}
                 </div>
 
                 <div className={`max-w-[72%] rounded-3xl px-5 py-4 text-sm leading-relaxed shadow-sm ${
                   isUser
-                    ? 'rounded-tr-md bg-[#143230] text-white'
-                    : 'rounded-tl-md border border-[#143230]/8 bg-white text-[#143230]'
+                    ? 'rounded-tr-md bg-[#404040] text-white'
+                    : 'rounded-tl-md border border-[#404040]/8 bg-white text-[#404040]'
                 }`}>
                   {formatMessage(msg.content)}
                 </div>
@@ -181,13 +181,13 @@ export default function ChatGeral() {
 
           {loading && (
             <div className="flex gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#379890]/12">
-                <Bot className="h-4 w-4 text-[#379890]" />
+              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-[#8DC63F]/12">
+                <Bot className="h-4 w-4 text-[#8DC63F]" />
               </div>
-              <div className="flex items-center gap-1.5 rounded-3xl rounded-tl-md border border-[#143230]/8 bg-white px-5 py-4 shadow-sm">
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[#379890]/60 [animation-delay:0ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[#379890]/60 [animation-delay:150ms]" />
-                <span className="h-2 w-2 animate-bounce rounded-full bg-[#379890]/60 [animation-delay:300ms]" />
+              <div className="flex items-center gap-1.5 rounded-3xl rounded-tl-md border border-[#404040]/8 bg-white px-5 py-4 shadow-sm">
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[#8DC63F]/60 [animation-delay:0ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[#8DC63F]/60 [animation-delay:150ms]" />
+                <span className="h-2 w-2 animate-bounce rounded-full bg-[#8DC63F]/60 [animation-delay:300ms]" />
               </div>
             </div>
           )}
@@ -196,8 +196,8 @@ export default function ChatGeral() {
         </div>
 
         {/* Input */}
-        <div className="border-t border-[#143230]/8 bg-white/80 px-6 py-5 backdrop-blur-xl lg:px-12">
-          <div className="flex items-end gap-3 rounded-3xl border border-[#143230]/12 bg-white p-3 shadow-[0_8px_30px_rgba(20,50,48,0.08)] transition-all focus-within:border-[#379890]/40 focus-within:shadow-[0_8px_30px_rgba(55,152,144,0.12)]">
+        <div className="border-t border-[#404040]/8 bg-white/80 px-6 py-5 backdrop-blur-xl lg:px-12">
+          <div className="flex items-end gap-3 rounded-3xl border border-[#404040]/12 bg-white p-3 shadow-[0_8px_30px_rgba(20,50,48,0.08)] transition-all focus-within:border-[#8DC63F]/40 focus-within:shadow-[0_8px_30px_rgba(55,152,144,0.12)]">
             <textarea
               ref={textareaRef}
               value={input}
@@ -210,12 +210,12 @@ export default function ChatGeral() {
               }}
               placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
               rows={1}
-              className="flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[#143230] outline-none placeholder:text-[#617472]"
+              className="flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[#404040] outline-none placeholder:text-[#617472]"
             />
             <button
               onClick={() => void send()}
               disabled={loading || !input.trim()}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[#379890] text-white shadow-md transition-all hover:bg-[#2d7d77] hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[#8DC63F] text-white shadow-md transition-all hover:bg-[#2d7d77] hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>

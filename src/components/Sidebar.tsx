@@ -40,21 +40,21 @@ function SidebarNav() {
             title={item.label}
             className={`group relative flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 ${
               isActive
-                ? 'bg-[#379890]/10 text-[#379890]'
-                : 'text-stone-400 hover:bg-[#143230]/5 hover:text-[#143230]'
+                ? 'bg-[#8DC63F]/10 text-[#8DC63F]'
+                : 'text-stone-400 hover:bg-[#404040]/5 hover:text-[#404040]'
             }`}
           >
             {isActive && (
-              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#379890]" />
+              <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#8DC63F]" />
             )}
             <item.icon
               className={`h-[18px] w-[18px] flex-shrink-0 transition-all duration-150 ${
-                isActive ? 'text-[#379890]' : 'group-hover:text-[#143230]'
+                isActive ? 'text-[#8DC63F]' : 'group-hover:text-[#404040]'
               }`}
               strokeWidth={isActive ? 2.5 : 1.8}
             />
             <span className={`hidden lg:block text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap ${
-              isActive ? 'text-[#379890]' : 'text-stone-500 group-hover:text-[#143230]'
+              isActive ? 'text-[#8DC63F]' : 'text-stone-500 group-hover:text-[#404040]'
             }`}>
               {item.label}
             </span>
@@ -67,16 +67,16 @@ function SidebarNav() {
 
 export default function Sidebar() {
   return (
-    <aside className="z-50 flex h-full w-[72px] lg:w-60 flex-shrink-0 flex-col border-r border-[#143230]/8 bg-white backdrop-blur-xl transition-all duration-300">
+    <aside className="z-50 flex h-full w-[72px] lg:w-60 flex-shrink-0 flex-col border-r border-[#404040]/8 bg-white backdrop-blur-xl transition-all duration-300">
 
       {/* Logo */}
-      <div className="flex items-center gap-3 border-b border-[#143230]/6 px-4 py-6 lg:px-5">
-        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[#379890]/12 ring-1 ring-[#379890]/20">
-          <div className="h-4 w-4 rounded-full bg-[#379890] shadow-[0_0_10px_rgba(55,152,144,0.4)]" />
+      <div className="flex items-center gap-3 border-b border-[#404040]/6 px-4 py-6 lg:px-5">
+        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-[#8DC63F]/12 ring-1 ring-[#8DC63F]/20">
+          <div className="h-4 w-4 rounded-full bg-[#8DC63F] shadow-[0_0_10px_rgba(55,152,144,0.4)]" />
         </div>
         <div className="hidden lg:block min-w-0">
-          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#143230]">Netturbo</p>
-          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#379890]">Hub Operacional</p>
+          <p className="text-[11px] font-black uppercase tracking-[0.22em] text-[#404040]">Netturbo</p>
+          <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-[#8DC63F]">Hub Operacional</p>
         </div>
       </div>
 
@@ -97,7 +97,7 @@ export default function Sidebar() {
       </Suspense>
 
       {/* Footer */}
-      <div className="border-t border-[#143230]/6 p-2">
+      <div className="border-t border-[#404040]/6 p-2">
         <button
           className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-stone-400 transition-all duration-150 hover:bg-red-50 hover:text-red-500"
           title="Sair"
