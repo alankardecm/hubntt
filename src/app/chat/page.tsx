@@ -1,28 +1,46 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bot, Send, Trash2, Sparkles } from 'lucide-react';
+import { Bot, Send, Trash2, Sparkles, BookOpen, MessageSquare, ExternalLink } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
+
+type Mode = 'geral' | 'interno';
+
+type Source = {
+  title: string;
+  source: string;
+  score?: number;
+  imageUrl?: string;
+};
 
 type Message = {
   role: 'user' | 'assistant';
   content: string;
+  sources?: Source[];
 };
 
 const STORAGE_KEY = 'netturbo-chat-geral-v1';
 
-const QUICK_PROMPTS = [
-  'Reescreva esse email de forma mais profissional:',
-  'Explique de forma simples o que é:',
-  'Me ajude a responder essa mensagem:',
-  'Resuma o seguinte texto:',
-];
+const QUICK_PROMPTS: Record<Mode, string[]> = {
+  geral: [
+    'Reescreva esse email de forma mais profissional:',
+    'Explique de forma simples o que é:',
+    'Me ajude a responder essa mensagem:',
+    'Resuma o seguinte texto:',
+  ],
+  interno: [
+    'Como configurar o ATA Grandstream HT818?',
+    'Como acessar o Zabbix?',
+    'Como configurar um F612?',
+    'Quais são os passos para configurar SIP?',
+  ],
+};
 
 function formatMessage(text: string) {
-  return text.split('\n').map((line, i) => (
+  return text.split('\n').map((line, i, arr) => (
     <span key={i}>
       {line}
-      {i < text.split('\n').length - 1 && <br />}
+      {i < arr.length - 1 && <br />}
     </span>
   ));
 }
@@ -31,6 +49,7 @@ export default function ChatGeral() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
+  const [mode, setMode] = useState<Mode>('geral');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -65,19 +84,20 @@ export default function ChatGeral() {
     setMessages(next);
     setInput('');
     setLoading(true);
-
     if (textareaRef.current) textareaRef.current.style.height = 'auto';
 
     try {
       const res = await fetch('/api/chat-geral', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next }),
+        body: JSON.stringify({ messages: next, mode }),
       });
 
-      const data = (await res.json()) as { answer?: string };
+      const data = (await res.json()) as { answer?: string; sources?: Source[] };
       const answer = data.answer?.trim() || 'Não consegui gerar uma resposta. Tente novamente.';
-      setMessages((prev) => [...prev, { role: 'assistant', content: answer }]);
+      const sources = data.sources ?? [];
+
+      setMessages((prev) => [...prev, { role: 'assistant', content: answer, sources }]);
     } catch {
       setMessages((prev) => [...prev, { role: 'assistant', content: 'Erro de conexão. Verifique a API e tente novamente.' }]);
     } finally {
@@ -95,36 +115,79 @@ export default function ChatGeral() {
     textareaRef.current?.focus();
   }
 
+  const isInterno = mode === 'interno';
+
   return (
-    <div className="flex flex-1 min-h-0 overflow-hidden bg-bg text-foreground">
+    <div className="flex flex-1 min-h-0 overflow-hidden bg-background text-foreground">
       <Sidebar />
 
       <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
 
         {/* Header */}
-        <div className="flex items-center justify-between gap-4 border-b border-[#404040]/8 bg-white/80 px-8 py-5 backdrop-blur-xl">
+        <div className="flex items-center justify-between gap-4 border-b border-[#404040]/8 bg-white/80 px-8 py-4 backdrop-blur-xl">
           <div className="flex items-center gap-4">
-            <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-[#8DC63F]/12 ring-1 ring-[#8DC63F]/20">
+            <div className="flex h-10 w-10 items-center justify-center rounded-2xl bg-[#8DC63F]/12 ring-1 ring-[#8DC63F]/20">
               <Bot className="h-5 w-5 text-[#8DC63F]" />
             </div>
             <div>
               <h1 className="text-base font-black tracking-[-0.03em] text-[#404040]">Assistente Netturbo</h1>
-              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-[#617472]">
-                {loading ? 'Digitando...' : messages.length === 0 ? 'Pronto para ajudar' : `${messages.length} mensagens`}
+              <p className="text-[11px] font-bold uppercase tracking-[0.2em] text-gray-400">
+                {loading
+                  ? 'Consultando...'
+                  : messages.length === 0
+                  ? isInterno ? 'Base interna ativa' : 'Pronto para ajudar'
+                  : `${messages.length} mensagens`}
               </p>
             </div>
           </div>
 
-          {messages.length > 0 && (
-            <button
-              onClick={clear}
-              className="flex items-center gap-2 rounded-xl border border-[#404040]/10 px-4 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-[#617472] transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-500"
-            >
-              <Trash2 className="h-3.5 w-3.5" />
-              Limpar
-            </button>
-          )}
+          <div className="flex items-center gap-3">
+            {/* Toggle de modo */}
+            <div className="flex items-center gap-1 rounded-xl border border-gray-200 bg-gray-50 p-1">
+              <button
+                onClick={() => setMode('geral')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                  !isInterno
+                    ? 'bg-white text-[#404040] shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <MessageSquare className="h-3 w-3" />
+                Geral
+              </button>
+              <button
+                onClick={() => setMode('interno')}
+                className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.15em] transition-all ${
+                  isInterno
+                    ? 'bg-[#8DC63F] text-white shadow-sm'
+                    : 'text-gray-400 hover:text-gray-600'
+                }`}
+              >
+                <BookOpen className="h-3 w-3" />
+                Consulta Interna
+              </button>
+            </div>
+
+            {messages.length > 0 && (
+              <button
+                onClick={clear}
+                className="flex items-center gap-2 rounded-xl border border-[#404040]/10 px-3 py-2 text-[11px] font-black uppercase tracking-[0.2em] text-gray-400 transition-all hover:border-red-200 hover:bg-red-50 hover:text-red-500"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+                Limpar
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Faixa de modo interno */}
+        {isInterno && (
+          <div className="border-b border-[#8DC63F]/20 bg-[#8DC63F]/6 px-8 py-2">
+            <p className="text-[10px] font-black uppercase tracking-[0.25em] text-[#8DC63F]">
+              Consultando TurboDocs · Pinecone como fallback
+            </p>
+          </div>
+        )}
 
         {/* Messages */}
         <div className="custom-scrollbar flex flex-1 flex-col gap-5 overflow-y-auto px-6 py-8 lg:px-12">
@@ -132,15 +195,21 @@ export default function ChatGeral() {
           {messages.length === 0 && (
             <div className="flex flex-1 flex-col items-center justify-center gap-8 text-center">
               <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-[#8DC63F]/12 ring-1 ring-[#8DC63F]/20">
-                <Sparkles className="h-7 w-7 text-[#8DC63F]" />
+                {isInterno ? <BookOpen className="h-7 w-7 text-[#8DC63F]" /> : <Sparkles className="h-7 w-7 text-[#8DC63F]" />}
               </div>
               <div>
-                <h2 className="text-2xl font-[950] tracking-[-0.04em] text-[#404040]">Como posso ajudar?</h2>
-                <p className="mt-2 text-sm text-[#617472]">Pergunte qualquer coisa, peça para reescrever um texto, analisar uma situação...</p>
+                <h2 className="text-2xl font-[950] tracking-[-0.04em] text-[#404040]">
+                  {isInterno ? 'Consulta à base interna' : 'Como posso ajudar?'}
+                </h2>
+                <p className="mt-2 text-sm text-gray-400">
+                  {isInterno
+                    ? 'Pergunte sobre procedimentos, configurações e processos documentados no TurboDocs.'
+                    : 'Pergunte qualquer coisa, peça para reescrever um texto, analisar uma situação...'}
+                </p>
               </div>
 
               <div className="grid w-full max-w-xl gap-3 sm:grid-cols-2">
-                {QUICK_PROMPTS.map((prompt) => (
+                {QUICK_PROMPTS[mode].map((prompt) => (
                   <button
                     key={prompt}
                     onClick={() => applyQuickPrompt(prompt)}
@@ -155,25 +224,48 @@ export default function ChatGeral() {
 
           {messages.map((msg, i) => {
             const isUser = msg.role === 'user';
+            const hasSources = !isUser && msg.sources && msg.sources.length > 0;
+
             return (
-              <div
-                key={i}
-                className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}
-              >
+              <div key={i} className={`flex gap-3 ${isUser ? 'flex-row-reverse' : 'flex-row'}`}>
                 <div className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full text-[11px] font-black ${
-                  isUser
-                    ? 'bg-[#404040] text-white'
-                    : 'bg-[#8DC63F]/12 text-[#8DC63F]'
+                  isUser ? 'bg-[#404040] text-white' : 'bg-[#8DC63F]/12 text-[#8DC63F]'
                 }`}>
                   {isUser ? 'EU' : <Bot className="h-4 w-4" />}
                 </div>
 
-                <div className={`max-w-[72%] rounded-3xl px-5 py-4 text-sm leading-relaxed shadow-sm ${
-                  isUser
-                    ? 'rounded-tr-md bg-[#404040] text-white'
-                    : 'rounded-tl-md border border-[#404040]/8 bg-white text-[#404040]'
-                }`}>
-                  {formatMessage(msg.content)}
+                <div className="flex max-w-[72%] flex-col gap-2">
+                  <div className={`rounded-3xl px-5 py-4 text-sm leading-relaxed shadow-sm ${
+                    isUser
+                      ? 'rounded-tr-md bg-[#404040] text-white'
+                      : 'rounded-tl-md border border-[#404040]/8 bg-white text-[#404040]'
+                  }`}>
+                    {formatMessage(msg.content)}
+                  </div>
+
+                  {/* Fontes compactas */}
+                  {hasSources && (
+                    <div className="flex flex-col gap-1 pl-1">
+                      <p className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
+                        Fontes ({msg.sources!.length})
+                      </p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {msg.sources!.slice(0, 5).map((src, si) => (
+                          <a
+                            key={si}
+                            href={src.source}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="flex items-center gap-1 rounded-full border border-[#8DC63F]/25 bg-[#8DC63F]/8 px-2.5 py-1 text-[10px] font-bold text-[#8DC63F] transition-colors hover:bg-[#8DC63F]/15"
+                          >
+                            <BookOpen className="h-2.5 w-2.5" />
+                            {src.title.length > 30 ? src.title.slice(0, 30) + '…' : src.title}
+                            <ExternalLink className="h-2.5 w-2.5 opacity-60" />
+                          </a>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               </div>
             );
@@ -197,31 +289,36 @@ export default function ChatGeral() {
 
         {/* Input */}
         <div className="border-t border-[#404040]/8 bg-white/80 px-6 py-5 backdrop-blur-xl lg:px-12">
-          <div className="flex items-end gap-3 rounded-3xl border border-[#404040]/12 bg-white p-3 shadow-[0_8px_30px_rgba(20,50,48,0.08)] transition-all focus-within:border-[#8DC63F]/40 focus-within:shadow-[0_8px_30px_rgba(55,152,144,0.12)]">
+          <div className={`flex items-end gap-3 rounded-3xl border p-3 shadow-[0_8px_30px_rgba(64,64,64,0.08)] transition-all ${
+            isInterno
+              ? 'border-[#8DC63F]/30 focus-within:border-[#8DC63F]/60 focus-within:shadow-[0_8px_30px_rgba(141,198,63,0.15)]'
+              : 'border-[#404040]/12 focus-within:border-[#8DC63F]/40 focus-within:shadow-[0_8px_30px_rgba(141,198,63,0.12)]'
+          } bg-white`}>
             <textarea
               ref={textareaRef}
               value={input}
               onChange={(e) => { setInput(e.target.value); autoResize(); }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter' && !e.shiftKey) {
-                  e.preventDefault();
-                  void send();
-                }
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); void send(); }
               }}
-              placeholder="Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)"
+              placeholder={isInterno
+                ? 'Pergunte sobre um procedimento ou configuração...'
+                : 'Digite sua mensagem... (Enter para enviar, Shift+Enter para nova linha)'}
               rows={1}
-              className="flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[#404040] outline-none placeholder:text-[#617472]"
+              className="flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-[#404040] outline-none placeholder:text-gray-400"
             />
             <button
               onClick={() => void send()}
               disabled={loading || !input.trim()}
-              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[#8DC63F] text-white shadow-md transition-all hover:bg-[#2d7d77] hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
+              className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-2xl bg-[#8DC63F] text-white shadow-md transition-all hover:bg-[#7ab030] hover:scale-105 active:scale-95 disabled:cursor-not-allowed disabled:opacity-40"
             >
               <Send className="h-4 w-4" />
             </button>
           </div>
-          <p className="mt-2 text-center text-[10px] text-[#617472]">
-            Powered by Groq · llama-3.3-70b · Uso interno Netturbo
+          <p className="mt-2 text-center text-[10px] text-gray-400">
+            {isInterno
+              ? 'Consulta Interna · TurboDocs + Pinecone · Groq llama-3.3-70b'
+              : 'Assistente Geral · Groq llama-3.3-70b · Uso interno Netturbo'}
           </p>
         </div>
       </main>
