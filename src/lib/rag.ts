@@ -1,5 +1,6 @@
 import { Pinecone } from '@pinecone-database/pinecone';
 import { GoogleGenerativeAIEmbeddings } from '@langchain/google-genai';
+import { searchBookStack } from '@/lib/bookstack';
 
 type RagSource = {
   title: string;
@@ -452,6 +453,22 @@ async function searchPinecone(query: string): Promise<RagContextResult> {
 }
 
 export async function buildRagContext(query: string): Promise<RagContextResult> {
+  // 1. BookStack (TurboDocs) — principal, sem custo de embedding
+  try {
+    const bookstackResult = await searchBookStack(query);
+    if (bookstackResult.provider === 'bookstack' && bookstackResult.context) {
+      return {
+        provider: 'pinecone', // mantém compatibilidade com o tipo existente
+        context: bookstackResult.context,
+        sources: bookstackResult.sources,
+        diagnostics: bookstackResult.diagnostics,
+      };
+    }
+  } catch {
+    // fallthrough para Pinecone
+  }
+
+  // 2. Pinecone — fallback com embeddings
   const pineconeResult = await searchPinecone(query);
   if (pineconeResult.context) return pineconeResult;
 
@@ -459,6 +476,6 @@ export async function buildRagContext(query: string): Promise<RagContextResult> 
     provider: 'empty',
     context: '',
     sources: [],
-    diagnostics: [...pineconeResult.diagnostics],
+    diagnostics: ['BookStack: sem resultado. Pinecone: sem resultado.'],
   };
 }
