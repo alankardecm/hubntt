@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import { Bot, Send, Trash2, Sparkles, BookOpen, MessageSquare, ExternalLink } from 'lucide-react';
+import { Bot, Send, Trash2, Sparkles, BookOpen, MessageSquare, ExternalLink, ZoomIn, X } from 'lucide-react';
 import Sidebar from '@/components/Sidebar';
 
 type Mode = 'geral' | 'interno';
@@ -50,6 +50,7 @@ export default function ChatGeral() {
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [mode, setMode] = useState<Mode>('geral');
+  const [lightbox, setLightbox] = useState<{ url: string; title: string } | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -68,6 +69,12 @@ export default function ChatGeral() {
     }
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setLightbox(null); };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   function autoResize() {
     const el = textareaRef.current;
@@ -120,6 +127,19 @@ export default function ChatGeral() {
   return (
     <div className="flex flex-1 min-h-0 overflow-hidden bg-background text-foreground">
       <Sidebar />
+
+      {/* Lightbox */}
+      {lightbox && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-sm p-4" onClick={() => setLightbox(null)}>
+          <div className="relative max-h-[90vh] max-w-[90vw]" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setLightbox(null)} className="absolute -top-4 -right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white shadow-lg text-gray-700 hover:bg-gray-100 z-10">
+              <X className="h-4 w-4" />
+            </button>
+            <p className="mb-2 text-center text-[11px] font-black uppercase tracking-[0.2em] text-white/70">{lightbox.title}</p>
+            <img src={lightbox.url} alt={lightbox.title} className="max-h-[85vh] max-w-[88vw] rounded-2xl object-contain shadow-2xl" />
+          </div>
+        </div>
+      )}
 
       <main className="flex flex-1 flex-col min-h-0 overflow-hidden">
 
@@ -243,14 +263,14 @@ export default function ChatGeral() {
                     {formatMessage(msg.content)}
                   </div>
 
-                  {/* Fontes compactas */}
+                  {/* Fontes + imagens */}
                   {hasSources && (
-                    <div className="flex flex-col gap-1 pl-1">
+                    <div className="flex flex-col gap-2 pl-1">
                       <p className="text-[9px] font-black uppercase tracking-[0.25em] text-gray-400">
                         Fontes ({msg.sources!.length})
                       </p>
                       <div className="flex flex-wrap gap-1.5">
-                        {msg.sources!.slice(0, 5).map((src, si) => (
+                        {msg.sources!.slice(0, 6).map((src, si) => (
                           <a
                             key={si}
                             href={src.source}
@@ -264,6 +284,24 @@ export default function ChatGeral() {
                           </a>
                         ))}
                       </div>
+                      {/* Imagens das fontes */}
+                      {msg.sources!.some(s => s.imageUrl) && (
+                        <div className="flex flex-wrap gap-2 mt-1">
+                          {msg.sources!.filter(s => s.imageUrl).slice(0, 4).map((src, si) => (
+                            <div
+                              key={si}
+                              className="group relative cursor-zoom-in overflow-hidden rounded-xl border border-gray-200 bg-gray-50"
+                              style={{ width: 120, height: 80 }}
+                              onClick={() => setLightbox({ url: src.imageUrl!, title: src.title })}
+                            >
+                              <img src={src.imageUrl} alt={src.title} className="h-full w-full object-contain transition-transform group-hover:scale-105" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/0 transition-colors group-hover:bg-black/20">
+                                <ZoomIn className="h-5 w-5 text-white opacity-0 drop-shadow group-hover:opacity-100 transition-opacity" />
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
                     </div>
                   )}
                 </div>
