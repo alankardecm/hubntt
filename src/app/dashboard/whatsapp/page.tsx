@@ -9,13 +9,11 @@ import {
 // ── Tipos ─────────────────────────────────────────────────────────────────────
 
 type Instance = {
-  instance: {
-    instanceName: string;
-    instanceId: string;
-    status: string;
-    profileName?: string;
-    profilePictureUrl?: string;
-  };
+  id: string;
+  name: string;
+  connectionStatus: string;
+  profileName?: string | null;
+  profilePicUrl?: string | null;
 };
 
 type InstanceDetail = {
@@ -220,27 +218,27 @@ export default function WhatsAppPage() {
               {!loading && instances.length === 0 && (
                 <p className="text-center text-xs text-stone-400 py-8">Nenhuma instância criada.</p>
               )}
-              {instances.map(({ instance: inst }) => (
+              {instances.map((inst) => (
                 <div
-                  key={inst.instanceId}
-                  onClick={() => openDetail(inst.instanceName)}
+                  key={inst.id}
+                  onClick={() => openDetail(inst.name)}
                   className={`group flex items-center justify-between rounded-xl px-3 py-2.5 cursor-pointer transition ${
-                    selected?.name === inst.instanceName
+                    selected?.name === inst.name
                       ? 'bg-[#8DC63F]/10 ring-1 ring-[#8DC63F]/30'
                       : 'hover:bg-stone-50'
                   }`}
                 >
                   <div className="min-w-0">
-                    <p className="text-xs font-bold text-[#404040] truncate">{inst.instanceName}</p>
+                    <p className="text-xs font-bold text-[#404040] truncate">{inst.name}</p>
                     {inst.profileName && (
                       <p className="text-[10px] text-stone-400 truncate">{inst.profileName}</p>
                     )}
-                    <p className={`text-[10px] font-semibold mt-0.5 ${stateColor(inst.status)}`}>
-                      {stateLabel(inst.status)}
+                    <p className={`text-[10px] font-semibold mt-0.5 ${stateColor(inst.connectionStatus)}`}>
+                      {stateLabel(inst.connectionStatus)}
                     </p>
                   </div>
                   <button
-                    onClick={e => { e.stopPropagation(); handleDelete(inst.instanceName); }}
+                    onClick={e => { e.stopPropagation(); handleDelete(inst.name); }}
                     className="opacity-0 group-hover:opacity-100 p-1 text-red-400 hover:text-red-600 transition"
                   >
                     <Trash2 className="h-3.5 w-3.5" />
