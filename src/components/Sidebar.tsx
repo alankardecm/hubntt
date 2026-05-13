@@ -4,25 +4,24 @@ import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
 import {
-  Home, Grid, FileText, MessageSquare,
+  Home, Grid, MessageSquare,
   Settings, LogOut,
   Activity, Database, Bell, BarChart2,
   Bot, TriangleAlert, Smartphone
 } from 'lucide-react';
 
 const NAV_ITEMS = [
-  { icon: Home,          href: '/',                    label: 'Hub' },
-  { icon: Grid,          href: '/dashboard',            label: 'Workspace' },
-  { icon: BarChart2,     href: '/dashboards',           label: 'Dashboard' },
-  { icon: Activity,      href: '/dashboard/noc',        label: 'Monitoramento' },
-  { icon: Bell,          href: '/monitoring/zabbix',    label: 'Zabbix' },
-  { icon: Bot,           href: '/dashboard/comunicacao',    label: 'IA Comunicação' },
-  { icon: Smartphone,   href: '/dashboard/whatsapp',       label: 'WhatsApp' },
-  { icon: TriangleAlert, href: '/dashboard/alertas',    label: 'Alertas' },
-  { icon: Database,      href: '/datalake',             label: 'DataLake' },
-  { icon: FileText,      href: '/rag',                  label: 'RAG' },
-  { icon: MessageSquare, href: '/chat',                 label: 'Chat' },
-  { icon: Settings,      href: '/settings',             label: 'Diagnóstico' },
+  { icon: Home,          href: '/',                        label: 'Hub' },
+  { icon: Grid,          href: '/dashboard',               label: 'Workspace' },
+  { icon: BarChart2,     href: '/dashboards',              label: 'Dashboard' },
+  { icon: Activity,      href: '/dashboard/noc',           label: 'Monitoramento' },
+  { icon: Bell,          href: '/monitoring/zabbix',       label: 'Zabbix' },
+  { icon: Bot,           href: '/dashboard/comunicacao',   label: 'IA Comunicação' },
+  { icon: Smartphone,    href: '/dashboard/whatsapp',      label: 'WhatsApp' },
+  { icon: TriangleAlert, href: '/dashboard/alertas',       label: 'Alertas' },
+  { icon: Database,      href: '/datalake',                label: 'DataLake' },
+  { icon: MessageSquare, href: '/chat',                    label: 'Chat' },
+  { icon: Settings,      href: '/settings',                label: 'Diagnóstico' },
 ];
 
 function SidebarNav() {

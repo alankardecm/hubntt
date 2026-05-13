@@ -16,7 +16,6 @@ import {
   Bell,
   Smartphone,
   TriangleAlert,
-  FileText,
   MessageSquare,
   Settings,
 } from 'lucide-react';
@@ -50,7 +49,7 @@ const modules = [
     title: 'WhatsApp',
     href: '/dashboard/whatsapp',
     icon: Smartphone,
-    description: 'Monitoramento e gestão de mensagens WhatsApp via Evolution API.',
+    description: 'Gestão de instâncias WhatsApp e bot via Evolution API.',
   },
   {
     title: 'Alertas',
@@ -65,16 +64,10 @@ const modules = [
     description: 'Fontes, ingestão e consolidação de dados para as futuras dashboards.',
   },
   {
-    title: 'RAG',
-    href: '/rag',
-    icon: FileText,
-    description: 'Consulta de conhecimento interno com contexto da base oficial.',
-  },
-  {
     title: 'Chat',
     href: '/chat',
     icon: MessageSquare,
-    description: 'Assistente interno com IA para tarefas, textos e dúvidas operacionais.',
+    description: 'Assistente interno com IA e consulta à base de conhecimento TurboDocs.',
   },
   {
     title: 'Diagnóstico',
