@@ -32,7 +32,7 @@ export default function WhatsAppPage() {
   const [creating, setCreating]           = useState(false);
   const [selected, setSelected]           = useState<InstanceDetail | null>(null);
   const [loadingDetail, setLoadingDetail] = useState(false);
-  const [webhookUrl, setLink2Url]       = useState('');
+  const [webhookUrl, setWebhookUrl] = useState('');
   const [sendTo, setSendTo]               = useState('');
   const [sendText, setSendText]           = useState('');
   const [sending, setSending]             = useState(false);
@@ -103,7 +103,7 @@ export default function WhatsAppPage() {
       const res = await fetch(`/api/evolution/instances/${name}`);
       const data: InstanceDetail = await res.json();
       setSelected(data);
-      setLink2Url(`${appUrl}/api/evolution/webhook`);
+      setWebhookUrl(`${appUrl}/api/evolution/webhook`);
     } finally {
       setLoadingDetail(false);
     }
@@ -119,14 +119,14 @@ export default function WhatsAppPage() {
     await openDetail(selected.name);
   }
 
-  async function handleSetLink2() {
+  async function handleSetWebhook() {
     if (!selected || !webhookUrl) return;
     await fetch(`/api/evolution/instances/${selected.name}`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ action: 'webhook', webhookUrl }),
     });
-    setFeedback('Link2 configurado com sucesso.');
+    setFeedback('Webhook configurado com sucesso.');
     setTimeout(() => setFeedback(''), 3000);
   }
 
@@ -320,20 +320,20 @@ export default function WhatsAppPage() {
                   </button>
                 )}
 
-                {/* Link2 */}
+                {/* Webhook */}
                 <div className="rounded-2xl border border-[#404040]/8 bg-white p-5 flex flex-col gap-3">
                   <p className="text-xs font-bold uppercase tracking-wider text-stone-400 flex items-center gap-1.5">
-                    <Link2 className="h-3.5 w-3.5" /> Link2
+                    <Link2 className="h-3.5 w-3.5" /> Webhook
                   </p>
                   <div className="flex gap-2">
                     <input
                       value={webhookUrl}
-                      onChange={e => setLink2Url(e.target.value)}
+                      onChange={e => setWebhookUrl(e.target.value)}
                       placeholder="https://seu-hub/api/evolution/webhook"
                       className="flex-1 rounded-lg border border-[#404040]/15 px-3 py-2 text-xs focus:outline-none focus:ring-2 focus:ring-[#8DC63F]/30"
                     />
                     <button
-                      onClick={handleSetLink2}
+                      onClick={handleSetWebhook}
                       className="rounded-lg bg-[#8DC63F] px-4 py-2 text-xs font-bold text-white hover:bg-[#7ab030] transition"
                     >
                       Salvar
