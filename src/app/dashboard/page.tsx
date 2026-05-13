@@ -10,70 +10,85 @@ import {
   Building2,
   Database,
   MonitorSmartphone,
-  ShieldCheck,
   Layers3,
   LayoutGrid,
   BarChart2,
-  Wallet,
-  Mic,
+  Bell,
+  Smartphone,
+  TriangleAlert,
+  FileText,
+  MessageSquare,
+  Settings,
 } from 'lucide-react';
 
 const modules = [
   {
-    title: 'RAG',
-    href: '/rag',
-    icon: Bot,
-    description: 'Consulta de conhecimento interno com contexto da base oficial.',
-  },
-  {
     title: 'Dashboard',
     href: '/dashboards',
     icon: BarChart2,
-    description: 'Builder e visoes do hub para montar dashboards sob demanda.',
+    description: 'Builder e visões do hub para montar dashboards sob demanda.',
+  },
+  {
+    title: 'Monitoramento',
+    href: '/dashboard/noc',
+    icon: Activity,
+    description: 'Saúde dos serviços-base do HUB, incluindo Zabbix, DataLake e sustentação operacional.',
+  },
+  {
+    title: 'Zabbix',
+    href: '/monitoring/zabbix',
+    icon: Bell,
+    description: 'Monitoramento de alarmes e eventos operacionais em tempo real.',
+  },
+  {
+    title: 'IA Comunicação',
+    href: '/dashboard/comunicacao',
+    icon: Bot,
+    description: 'Dashboard de sentimento, palavras-chave e canais de comunicação.',
+  },
+  {
+    title: 'WhatsApp',
+    href: '/dashboard/whatsapp',
+    icon: Smartphone,
+    description: 'Monitoramento e gestão de mensagens WhatsApp via Evolution API.',
+  },
+  {
+    title: 'Alertas',
+    href: '/dashboard/alertas',
+    icon: TriangleAlert,
+    description: 'Central de alertas operacionais, notificações e eventos críticos.',
   },
   {
     title: 'DataLake',
     href: '/datalake',
     icon: Database,
-    description: 'Fontes, ingestao e consolidacao de dados para as futuras dashboards.',
+    description: 'Fontes, ingestão e consolidação de dados para as futuras dashboards.',
   },
   {
-    title: 'Zabbix',
-    href: '/monitoring/zabbix',
-    icon: ShieldCheck,
-    description: 'Monitoramento de alarmes e eventos operacionais em tempo real.',
+    title: 'RAG',
+    href: '/rag',
+    icon: FileText,
+    description: 'Consulta de conhecimento interno com contexto da base oficial.',
   },
   {
-    title: 'Infra',
-    href: '/dashboard/noc',
-    icon: Activity,
-    description: 'Saude dos servicos-base do HUB, incluindo Zabbix, Data Lake e sustentacao operacional.',
+    title: 'Chat',
+    href: '/chat',
+    icon: MessageSquare,
+    description: 'Assistente interno com IA para tarefas, textos e dúvidas operacionais.',
   },
   {
-    title: 'IA Comunicacao',
-    href: '/dashboard/comunicacao',
-    icon: Layers3,
-    description: 'Dashboard inicial para sentimento, palavras-chave e reunioes.',
-  },
-  {
-    title: 'Custos',
-    href: '/dashboard/custos',
-    icon: Wallet,
-    description: 'Painel financeiro inicial do HUB com base em servicos, modulos e ambientes.',
-  },
-  {
-    title: 'NetMeet',
-    href: '/dashboard/netmeet',
-    icon: Mic,
-    description: 'Resumo de reunioes dentro do Hub, com link, transcript, resumo e envio ao Teams.',
+    title: 'Diagnóstico',
+    href: '/settings',
+    icon: Settings,
+    description: 'Saúde dos serviços, logs e configurações operacionais do HUB.',
   },
 ];
 
 const lanes = [
-  'Cada usuario tera sua visao personalizada.',
+  'Cada usuário terá sua visão personalizada.',
   'Sem KPI global fixo nesta tela.',
-  'A pagina funciona como selector de modulos.',
-  'Indicadores futuros devem vir do perfil do usuario.',
+  'A página funciona como seletor de módulos.',
+  'Indicadores futuros virão do perfil do usuário.',
 ];
 
 export default function DashboardHub() {
@@ -91,17 +106,17 @@ export default function DashboardHub() {
             <div className="flex flex-wrap items-center gap-3 text-[10px] font-black uppercase tracking-[0.35em] text-stone-500">
               <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">Workspace</span>
               <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">Hub</span>
-              <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">Multiusuario</span>
+              <span className="px-3 py-1 rounded-full border border-white/10 bg-white/[0.03]">Multiusuário</span>
             </div>
 
             <div className="mt-6 grid gap-10 xl:grid-cols-12 items-start">
               <div className="xl:col-span-7 space-y-5">
                 <h1 className="text-5xl lg:text-6xl font-[1000] tracking-[-0.08em] leading-[0.95] uppercase">
-                  Selecione sua area de trabalho
+                  Selecione sua área de trabalho
                 </h1>
                 <p className="max-w-2xl text-base lg:text-lg text-stone-400 leading-relaxed">
-                  Esta pagina nao vai exibir um KPI unico para todo mundo. Ela existe para cada usuario
-                  entrar no modulo certo e, no futuro, receber apenas os indicadores que forem dele.
+                  Esta página não exibe um KPI único para todo mundo. Ela existe para cada usuário
+                  entrar no módulo certo e, no futuro, receber apenas os indicadores que forem dele.
                 </p>
               </div>
 
@@ -137,7 +152,7 @@ export default function DashboardHub() {
                     <module.icon className="w-6 h-6 text-neon-cyan" />
                   </div>
                   <span className="text-[9px] font-black uppercase tracking-[0.3em] text-stone-600">
-                    0{index + 1}
+                    {String(index + 1).padStart(2, '0')}
                   </span>
                 </div>
 
@@ -148,7 +163,7 @@ export default function DashboardHub() {
                   href={module.href}
                   className="mt-7 inline-flex items-center gap-2 text-[11px] font-black uppercase tracking-[0.25em] text-neon-cyan transition-transform group-hover:translate-x-1"
                 >
-                  Abrir modulo <ArrowRight className="w-4 h-4" />
+                  Abrir módulo <ArrowRight className="w-4 h-4" />
                 </Link>
               </motion.div>
             ))}
@@ -173,20 +188,20 @@ export default function DashboardHub() {
                 <div className="rounded-[28px] border border-white/5 bg-white/[0.03] p-5">
                   <div className="flex items-center gap-3">
                     <LayoutGrid className="w-5 h-5 text-neon-cyan" />
-                    <h4 className="text-sm font-black uppercase tracking-[0.2em]">Escolher modulo</h4>
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em]">Escolher módulo</h4>
                   </div>
                   <p className="mt-4 text-sm leading-relaxed text-stone-400">
-                    Cada area abre uma funcao especifica do hub. Nada de KPI fixo aqui.
+                    Cada área abre uma função específica do hub. Nada de KPI fixo aqui.
                   </p>
                 </div>
 
                 <div className="rounded-[28px] border border-white/5 bg-white/[0.03] p-5">
                   <div className="flex items-center gap-3">
                     <Building2 className="w-5 h-5 text-neon-orange" />
-                    <h4 className="text-sm font-black uppercase tracking-[0.2em]">Entradas por usuario</h4>
+                    <h4 className="text-sm font-black uppercase tracking-[0.2em]">Entradas por usuário</h4>
                   </div>
                   <p className="mt-4 text-sm leading-relaxed text-stone-400">
-                    A personalizacao real pode vir depois via perfil, permissao ou regra de negocio.
+                    A personalização real pode vir depois via perfil, permissão ou regra de negócio.
                   </p>
                 </div>
               </div>
@@ -201,21 +216,21 @@ export default function DashboardHub() {
               <div className="flex items-center gap-3">
                 <Bot className="w-6 h-6 text-neon-orange" />
                 <p className="text-[10px] font-black uppercase tracking-[0.35em] text-stone-500">
-                  Proxima evolucao
+                  Próxima evolução
                 </p>
               </div>
 
               <div className="mt-6 space-y-4">
                 <div className="rounded-[26px] border border-white/5 bg-background/40 p-5">
                   <p className="text-sm leading-relaxed text-stone-400">
-                    Quando voce quiser, a tela pode virar apenas um launcher ou ser substituida por visoes
-                    individuais de usuario.
+                    Quando quiser, a tela pode virar apenas um launcher ou ser substituída por visões
+                    individuais de usuário.
                   </p>
                 </div>
 
                 <div className="rounded-[26px] border border-white/5 bg-background/40 p-5">
                   <p className="text-sm leading-relaxed text-stone-400">
-                    O importante agora e evitar um dashboard que sugere um indicador unico para todo mundo.
+                    O importante agora é evitar um dashboard que sugere um indicador único para todo mundo.
                   </p>
                 </div>
               </div>
