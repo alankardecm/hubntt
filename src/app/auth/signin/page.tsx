@@ -10,12 +10,6 @@ export default async function SignInPage() {
   const greeting = hour < 12 ? "BOM DIA" : hour < 18 ? "BOA TARDE" : "BOA NOITE"
 
   return (
-    <style>{`
-      .signin-btn:hover {
-        box-shadow: 0 0 20px rgba(172,208,0,0.2), inset 0 0 20px rgba(172,208,0,0.03) !important;
-        border-color: #ACD000 !important;
-      }
-    `}</style>
     <div
       className="min-h-screen flex items-center justify-center p-4 relative overflow-hidden"
       style={{ backgroundColor: "#000D00" }}
