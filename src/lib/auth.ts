@@ -29,10 +29,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     jwt({ token, account }) {
       const email = token.email ?? ''
       token.role = SUPERADMIN_EMAILS.includes(email) ? 'superadmin' : 'user'
+
       if (account && email) {
+        // Login inicial — carrega permissões e versão do registro
         token.pages = getUserPages(email)
         token.tokenVersion = getTokenVersion(email)
+      } else if (email && token.tokenVersion !== -1) {
+        // Refresh do token — verifica se force logout foi acionado
+        const current = getTokenVersion(email)
+        if (current > (token.tokenVersion as number ?? 0)) {
+          token.tokenVersion = -1 // marca token como inválido
+        }
       }
+
       return token
     },
 

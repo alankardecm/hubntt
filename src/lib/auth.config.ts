@@ -1,12 +1,11 @@
 // Config Edge-safe — sem imports de Node.js
-// Usado pelo middleware (Edge Runtime)
+// Usado pelo proxy (Edge Runtime)
 
 import type { NextAuthConfig } from "next-auth"
 import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
 import { NextResponse } from "next/server"
 import { DEFAULT_PAGES, checkPagePermission } from "@/lib/user-pages"
 import type { UserPages } from "@/lib/user-pages"
-import { getTokenVersion } from "@/lib/user-registry"
 
 const SUPERADMIN_EMAILS = ["alan.moreira@netturbo.com.br"]
 
@@ -35,11 +34,8 @@ export const authConfig: NextAuthConfig = {
       if (isPublic) return true
       if (!session) return false
 
-      // Verifica se o admin forçou logout (tokenVersion incompatível)
-      const email = session.user.email ?? ''
-      const jwtVersion = (session.user.tokenVersion as number) ?? 0
-      const storedVersion = getTokenVersion(email)
-      if (storedVersion > jwtVersion) {
+      // tokenVersion = 0 no JWT significa sessão inválida (force logout ativado)
+      if (session.user.tokenVersion === -1) {
         return NextResponse.redirect(new URL('/auth/signin', request.url))
       }
 
