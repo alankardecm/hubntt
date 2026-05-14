@@ -22,7 +22,7 @@ type EvoMessageItem = {
     imageMessage?: { caption?: string };
     audioMessage?: object;
     videoMessage?: { caption?: string };
-    documentMessage?: { title?: string };
+    documentMessage?: { title?: string; mimetype?: string };
     stickerMessage?: object;
   };
   messageType: string;
@@ -113,7 +113,9 @@ export async function POST(req: Request) {
     const jid        = item.key.remoteJid;
     const text       = extractText(item).trim();
     const isTextMsg  = item.messageType === 'conversation' || item.messageType === 'extendedTextMessage';
-    const isAudioMsg = item.messageType === 'audioMessage';
+    const isAudioDoc = item.messageType === 'documentMessage' &&
+      (item.message?.documentMessage?.mimetype ?? '').startsWith('audio/')
+    const isAudioMsg = item.messageType === 'audioMessage' || isAudioDoc;
 
     if (isGroup(jid)) continue;
     if (!isTextMsg && !isAudioMsg) continue;
@@ -138,7 +140,10 @@ export async function POST(req: Request) {
             timestamp: new Date().toISOString(),
           });
           sendText(instance, replyTo,
-            '🎙️ *Áudio recebido!*\n\nPara salvar a ata no Hub Netturbo com seu nome, informe seu email corporativo:\n_(ex: joao.silva@netturbo.com.br)_\n\nIsso só precisa ser feito uma vez. 😊'
+            '🎙️ *Áudio recebido!*\n\n' +
+            'Para salvar a ata no Hub Netturbo com seu nome, informe seu email corporativo:\n' +
+            '_(ex: joao.silva@netturbo.com.br)_\n\n' +
+            'Isso só precisa ser feito uma vez. Depois disso suas atas ficam disponíveis direto no Hub. 😊'
           ).catch(err => console.error('[NetMeet] erro ao pedir email:', err));
         }
       }

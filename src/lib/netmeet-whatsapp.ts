@@ -109,7 +109,11 @@ export async function handleAudioMeeting(
   userEmail?: string,
   senderName?: string,
 ): Promise<void> {
-  await sendText(instance, replyTo, '🎙️ Áudio recebido! Transcrevendo e gerando a ata... aguarde.');
+  await sendText(instance, replyTo,
+    '🎙️ *Reunião recebida!* Estou transcrevendo e gerando a ata.\n\n' +
+    '⏱️ Gravações longas podem levar alguns minutos. ' +
+    'Pode fechar o app — a ata chegará aqui quando estiver pronta e também ficará disponível no Hub Netturbo.'
+  );
 
   const media = await getMediaBase64(instance, item.key.id);
 
