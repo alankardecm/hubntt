@@ -1,7 +1,6 @@
 import { signIn } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
-import Image from "next/image"
 
 export default async function SignInPage() {
   const session = await auth()
@@ -60,12 +59,11 @@ export default async function SignInPage() {
 
             {/* Logo */}
             <div className="flex items-center justify-between">
-              <Image
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
                 src="/logo-netturbo.png"
                 alt="Netturbo"
                 width={140}
-                height={48}
-                priority
                 style={{ filter: "drop-shadow(0 0 8px rgba(172,208,0,0.25))" }}
               />
 
