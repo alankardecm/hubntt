@@ -4,7 +4,22 @@ Este arquivo serve como checkpoint oficial para retomada rapida do HUB na proxim
 
 ---
 
-## PONTO DE RECUPERACAO ATUAL (13/05/2026 — fim de sessao)
+## PONTO DE RECUPERACAO ATUAL (13/05/2026 — 22h — fim de sessao)
+
+### Resumo da sessao de hoje (para retomada rapida)
+
+**O que foi feito:**
+1. **NetMeet via WhatsApp integrado e testado em producao** — usuario manda audio no WA → Hub transcreve (OpenAI Whisper) → gera ata (GPT-4o-mini) → devolve ata formatada no WA. Testado as 21:39, funcionou na primeira tentativa.
+2. **Codigo subido para dois remotes git:** `origin` (netturbo-tech/hubntt empresa) e `personal` (alankardecm/hubntt pessoal)
+3. **Dois infograficos criados** para apresentacao: `HUB-FUNCIONALIDADES.html` e `HUB-TECNICO.html` na pasta `15 - PROJETO IA NETTURBO`
+
+**Ultimo commit no servidor:** `86e9e42` (master)
+
+**Proximo passo prioritario:** Autenticacao Azure AD / LDAP (prerequisito para pagina /meetings e isolamento de dados por usuario)
+
+**Regra de trabalho:** sempre fazer backup antes de editar arquivos; git push so com autorizacao explicita do usuario.
+
+---
 
 ### Ambiente de producao (servidor Linux)
 
