@@ -4,7 +4,55 @@ Este arquivo serve como checkpoint oficial para retomada rapida do HUB na proxim
 
 ---
 
-## PONTO DE RECUPERACAO ATUAL (14/05/2026 — sessao completa)
+## PONTO DE RECUPERACAO ATUAL (14/05/2026 — sessao bot WhatsApp)
+
+### Resumo da sessao de hoje (para retomada rapida)
+
+**O que foi feito:**
+1. **Fix loop bot WhatsApp** — Evolution API fazia retry do webhook por timeout (IA de análise lenta) e re-enviava batch de mensagens antigas. Corrigido com dois guards no `webhook/route.ts`:
+   - `isRecentMessage(timestamp)` — ignora mensagens com mais de 60s (históricas)
+   - `hasBotResponded(msgId)` — Map com TTL 5min evita resposta duplicada no retry
+2. **Histórico de conversa por número** — sessão de 15min com até 4 trocas em memória. Permite perguntas de acompanhamento tipo "quais as equipes desses protocolos" sem perder contexto
+3. **Schema do DataLake corrigido** — `fato_solicitacoes` atualizado com colunas reais: `nome_cliente`, `cod_cliente`, `criticidade`, `cidade`, `bairro`, `data_prazo`, `reabertura`, `localizacao`. `nome_cliente` e `equipe` estão na tabela diretamente — não precisa de JOIN
+4. **Data/hora atual no system prompt** — bot sabe a data/hora exata para resolver "hoje", "esta semana", "este mês" sem ambiguidade
+
+**Commits desta sessão:**
+- `b48b59f` — fix: prevenir loop de respostas do bot WhatsApp por retry da Evolution API
+- `b90bcdb` — feat: historico de conversa e schema completo no bot WhatsApp
+
+**Último commit no servidor:** `b90bcdb` (master) — deploy feito às 19:33
+
+**Próximo passo prioritário:** Testar historico de contexto no WhatsApp ("quantos protocolos hoje?" → "quais as equipes desses?")
+
+**Regra de trabalho:** sempre fazer backup antes de editar arquivos; git push só com autorização explícita do usuário.
+
+### Arquivos modificados nesta sessão
+
+```
+src/app/api/evolution/webhook/route.ts  — guards anti-loop (recency + dedup)
+src/lib/evolution-bot.ts                — historico de conversa + schema corrigido
+PONTO_RECUPERACAO_HUB.md               — este arquivo
+```
+
+### Schema atual do fato_solicitacoes (corrigido)
+
+```
+protocolo(bigint PK), etiqueta(varchar), status(varchar), criticidade(varchar),
+sla_segundos(decimal), data_abertura(datetime), data_conclusao(datetime),
+data_prazo(datetime), tipo(varchar), atendente(varchar), equipe(varchar),
+reabertura(tinyint), telefone_raw(varchar), cod_cliente(bigint),
+nome_cliente(varchar), localizacao(varchar), bairro(varchar), cidade(varchar),
+data_ingestao(datetime)
+
+Status reais: 'Encerramento', 'Cancelado' (não existe 'Aberto')
+"abertos em X" = filtrar por data_abertura (nunca por status)
+"sem conclusão" = WHERE data_conclusao IS NULL
+nome_cliente e equipe: direto na tabela, sem JOIN
+```
+
+---
+
+## PONTO DE RECUPERACAO ANTERIOR (14/05/2026 — sessao completa)
 
 ### Resumo da sessao de hoje (para retomada rapida)
 
