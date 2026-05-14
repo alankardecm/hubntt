@@ -5,10 +5,11 @@ import Link from 'next/link';
 import { Suspense } from 'react';
 import {
   Home, Grid, MessageSquare,
-  Settings, LogOut,
+  Settings,
   Activity, Database, Bell, BarChart2,
   Bot, TriangleAlert, Smartphone
 } from 'lucide-react';
+import { SignOutButton } from '@/components/SignOutButton';
 
 const NAV_ITEMS = [
   { icon: Home,          href: '/',                        label: 'Hub' },
@@ -97,13 +98,7 @@ export default function Sidebar() {
 
       {/* Footer */}
       <div className="border-t border-[#404040]/6 p-2">
-        <button
-          className="group flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-stone-400 transition-all duration-150 hover:bg-red-50 hover:text-red-500"
-          title="Sair"
-        >
-          <LogOut className="h-[18px] w-[18px] flex-shrink-0 transition-all duration-150 group-hover:scale-110" strokeWidth={1.8} />
-          <span className="hidden lg:block text-[11px] font-bold uppercase tracking-[0.1em]">Sair</span>
-        </button>
+        <SignOutButton />
       </div>
     </aside>
   );
