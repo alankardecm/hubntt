@@ -81,7 +81,7 @@ Retomar a partir do PONTO_RECUPERACAO_HUB.md."
 3. **Autenticação** — planejada via Active Directory (Azure AD / LDAP); não iniciada
 4. **Supabase → PostgreSQL local** — PostgreSQL já instalado no servidor; migração dos dados do Supabase não iniciada
 5. **Alertas proativos Zabbix** — bot enviar mensagem automática ao detectar alarme DISASTER
-6. **NetMeet via WhatsApp** — integração implementada (13/05/2026), aguarda deploy e teste real de áudio (ver seção NetMeet abaixo)
+6. **NetMeet via WhatsApp** — ✅ implementado e testado em produção (13/05/2026) — áudio → Whisper → GPT → ata no WhatsApp funcionando
 
 ### Variáveis de ambiente no servidor (`/opt/DESENVOLVIMENTO_E_TESTE/hubntt/.env`)
 
@@ -364,12 +364,12 @@ pm2 stop hub-ntt-73 && git pull origin master && npm run build && pm2 start hub-
 pm2 save
 ```
 
-### Ponto de atenção — endpoint de mídia Evolution API v2.3.7
+### Testado e funcionando em produção (13/05/2026 — 21:39)
 
-O `getMediaBase64` usa `POST /chat/getBase64FromMediaMessage/{instance}`.
-Se retornar 404 no servidor de produção (v2.3.7 pode ter path diferente), verificar:
-- Documentação: `http://10.250.110.238:8080/docs` (Swagger da Evolution API)
-- Ajustar path em `src/lib/evolution-api.ts` se necessário
+- Endpoint confirmado: `POST /chat/getBase64FromMediaMessage/{instance}` ✅
+- Body: `{ "message": { "key": { "id": "..." } }, "convertToMp4": false }` ✅
+- Modelo transcrição: `gpt-4o-transcribe` ✅
+- Modelo ata: `gpt-4o-mini` ✅
 
 ---
 
