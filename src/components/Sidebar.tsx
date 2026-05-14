@@ -6,7 +6,7 @@ import { Suspense } from 'react';
 import { useSession } from 'next-auth/react';
 import {
   Home, Grid, MessageSquare,
-  Settings, Users,
+  Settings, Users, Video,
   Activity, Database, Bell, BarChart2,
   Bot, TriangleAlert, Smartphone
 } from 'lucide-react';
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { icon: TriangleAlert, href: '/dashboard/alertas',       label: 'Alertas' },
   { icon: Database,      href: '/datalake',                label: 'DataLake' },
   { icon: MessageSquare, href: '/chat',                    label: 'Chat' },
+  { icon: Video,         href: '/dashboard/netmeet',       label: 'NetMeet' },
   { icon: Settings,      href: '/settings',                label: 'Diagnóstico' },
 ];
 

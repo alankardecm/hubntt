@@ -18,7 +18,7 @@ async function transcribeBase64Audio(base64: string, mimeType: string): Promise<
 
   const transcription = await openai.audio.transcriptions.create({
     file,
-    model: process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'gpt-4o-transcribe',
+    model: process.env.OPENAI_TRANSCRIPTION_MODEL ?? 'whisper-1',
     language: 'pt',
   });
 
