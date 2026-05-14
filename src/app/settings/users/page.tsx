@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation'
 import { loadRegistry } from '@/lib/user-registry'
 import { UserPermissionRow } from '@/components/admin/UserPermissionRow'
 import Sidebar from '@/components/Sidebar'
-import { Users, ShieldCheck, Wifi, Lock, BarChart2, MessageSquare, Activity, Bell, Smartphone, Database, Search, Video } from 'lucide-react'
+import { Users, ShieldCheck, Wifi, Lock, BarChart2, MessageSquare, Activity, Bell, Smartphone, Database, Search, Video, LogOut } from 'lucide-react'
 
 export default async function UsersPage() {
   const session = await auth()
@@ -27,6 +27,7 @@ export default async function UsersPage() {
   ).length
 
   const PAGE_COLS = [
+    { label: 'Logout',    Icon: LogOut },
     { label: 'Dashboard', Icon: BarChart2, colspan: true },
     { label: 'Chat',      Icon: MessageSquare },
     { label: 'NOC',       Icon: Activity },

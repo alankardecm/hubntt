@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { RegistryUser } from '@/lib/user-registry'
 import type { UserPages } from '@/lib/user-pages'
-import { MessageSquare, BarChart2, Activity, Bell, Smartphone, Database, Search, Video } from 'lucide-react'
+import { MessageSquare, BarChart2, Activity, Bell, Smartphone, Database, Search, Video, LogOut } from 'lucide-react'
 
 const SIMPLE_PAGES = [
   { key: 'chat',       label: 'Chat',      Icon: MessageSquare },
@@ -48,6 +48,8 @@ interface Props {
 export function UserPermissionRow({ user, isSelf }: Props) {
   const [pages, setPages] = useState<UserPages>(user.pages)
   const [saving, setSaving] = useState<string | null>(null)
+  const [loggingOut, setLoggingOut] = useState(false)
+  const [loggedOut, setLoggedOut] = useState(false)
 
   const isOnline = Date.now() - new Date(user.lastLogin).getTime() < 30 * 60 * 1000
 
@@ -63,6 +65,17 @@ export function UserPermissionRow({ user, isSelf }: Props) {
       })
     } finally {
       setSaving(null)
+    }
+  }
+
+  async function handleForceLogout() {
+    if (!confirm(`Forçar logout de ${user.name}?`)) return
+    setLoggingOut(true)
+    try {
+      await fetch(`/api/admin/users/${encodeURIComponent(user.email)}/logout`, { method: 'POST' })
+      setLoggedOut(true)
+    } finally {
+      setLoggingOut(false)
     }
   }
 
@@ -142,6 +155,25 @@ export function UserPermissionRow({ user, isSelf }: Props) {
             })}
           </div>
         )}
+      </td>
+
+      {/* Force Logout */}
+      <td className="py-4 px-3 text-center">
+        <button
+          onClick={handleForceLogout}
+          disabled={loggingOut}
+          title={loggedOut ? 'Logout forçado — próxima requisição será redirecionada' : 'Forçar logout'}
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${
+            loggedOut
+              ? 'bg-amber-100 text-amber-500 cursor-default'
+              : 'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {loggingOut
+            ? <span className="h-3 w-3 rounded-full border-2 border-red-200 border-t-red-500 animate-spin" />
+            : <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
+          }
+        </button>
       </td>
 
       {/* Páginas simples */}

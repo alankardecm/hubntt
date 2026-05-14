@@ -13,6 +13,7 @@ export interface RegistryUser {
   firstLogin: string
   lastLogin: string
   pages: UserPages
+  tokenVersion: number
 }
 
 export type UserRegistry = Record<string, RegistryUser>
@@ -52,6 +53,7 @@ export function registerLogin(params: {
     firstLogin: existing?.firstLogin ?? now,
     lastLogin: now,
     pages: existing?.pages ?? (params.role === 'superadmin' ? SUPERADMIN_PAGES : DEFAULT_PAGES),
+    tokenVersion: existing?.tokenVersion ?? 0,
   }
 
   registry[params.email] = user
@@ -69,4 +71,16 @@ export function updateUserPages(email: string, update: Partial<UserPages>): bool
   registry[email].pages = { ...registry[email].pages, ...update }
   saveRegistry(registry)
   return true
+}
+
+export function forceLogout(email: string): boolean {
+  const registry = loadRegistry()
+  if (!registry[email]) return false
+  registry[email].tokenVersion = (registry[email].tokenVersion ?? 0) + 1
+  saveRegistry(registry)
+  return true
+}
+
+export function getTokenVersion(email: string): number {
+  return loadRegistry()[email]?.tokenVersion ?? 0
 }

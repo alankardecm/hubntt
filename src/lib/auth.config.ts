@@ -6,6 +6,7 @@ import MicrosoftEntraID from "next-auth/providers/microsoft-entra-id"
 import { NextResponse } from "next/server"
 import { DEFAULT_PAGES, checkPagePermission } from "@/lib/user-pages"
 import type { UserPages } from "@/lib/user-pages"
+import { getTokenVersion } from "@/lib/user-registry"
 
 const SUPERADMIN_EMAILS = ["alan.moreira@netturbo.com.br"]
 
@@ -33,6 +34,15 @@ export const authConfig: NextAuthConfig = {
       const isPublic = PUBLIC_PATHS.some(p => pathname.startsWith(p))
       if (isPublic) return true
       if (!session) return false
+
+      // Verifica se o admin forçou logout (tokenVersion incompatível)
+      const email = session.user.email ?? ''
+      const jwtVersion = (session.user.tokenVersion as number) ?? 0
+      const storedVersion = getTokenVersion(email)
+      if (storedVersion > jwtVersion) {
+        return NextResponse.redirect(new URL('/auth/signin', request.url))
+      }
+
       if (session.user.role === 'superadmin') return true
 
       const pages = (session.user.pages as UserPages) ?? DEFAULT_PAGES
@@ -45,6 +55,7 @@ export const authConfig: NextAuthConfig = {
     session({ session, token }) {
       session.user.role = (token.role as string) ?? 'user'
       session.user.pages = token.pages as UserPages
+      session.user.tokenVersion = (token.tokenVersion as number) ?? 0
       return session
     },
   },

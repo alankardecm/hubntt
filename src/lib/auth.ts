@@ -3,7 +3,7 @@
 
 import NextAuth from "next-auth"
 import { authConfig } from "@/lib/auth.config"
-import { registerLogin, getUserPages } from "@/lib/user-registry"
+import { registerLogin, getUserPages, getTokenVersion } from "@/lib/user-registry"
 import type { UserPages } from "@/lib/user-pages"
 
 const SUPERADMIN_EMAILS = ["alan.moreira@netturbo.com.br"]
@@ -31,6 +31,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       token.role = SUPERADMIN_EMAILS.includes(email) ? 'superadmin' : 'user'
       if (account && email) {
         token.pages = getUserPages(email)
+        token.tokenVersion = getTokenVersion(email)
       }
       return token
     },
@@ -38,6 +39,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     session({ session, token }) {
       session.user.role = (token.role as string) ?? 'user'
       session.user.pages = token.pages as UserPages
+      session.user.tokenVersion = (token.tokenVersion as number) ?? 0
       return session
     },
   },

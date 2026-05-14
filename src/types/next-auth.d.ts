@@ -7,6 +7,7 @@ declare module "next-auth" {
     user: {
       role: string
       pages?: UserPages
+      tokenVersion?: number
     } & DefaultSession["user"]
   }
 }
@@ -15,5 +16,6 @@ declare module "next-auth/jwt" {
   interface JWT {
     role: string
     pages?: UserPages
+    tokenVersion?: number
   }
 }
