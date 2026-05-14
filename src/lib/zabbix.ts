@@ -525,24 +525,24 @@ function formatEventList(events: ZabbixEvent[], limit = 8) {
 
 export async function getActiveProblems(limit = 100): Promise<ZabbixProblem[]> {
   const allowedHosts = await getAllowedHosts(1000);
-  const allowedHostIds = new Set(allowedHosts.map((host) => host.hostid));
+  if (allowedHosts.length === 0) return [];
 
+  const allowedHostIds = allowedHosts.map((host) => host.hostid);
+
+  // Filtra direto na API pelo hostids — evita o problema de selectHosts retornar vazio
   const problems = await zabbixRequest<ZabbixProblem[]>('problem.get', {
     output: ['eventid', 'objectid', 'clock', 'name', 'severity', 'acknowledged', 'suppressed'],
     selectHosts: ['hostid', 'name'],
     selectTags: ['tag', 'value'],
+    hostids: allowedHostIds,
     limit,
-    recent: true,
-    suppressed: false,
   });
 
-  return problems
-    .filter((problem) => (problem.hosts || []).some((host) => allowedHostIds.has(host.hostid)))
-    .sort((a, b) => {
+  return problems.sort((a, b) => {
     const severityDiff = Number(b.severity) - Number(a.severity);
     if (severityDiff !== 0) return severityDiff;
     return Number(b.clock) - Number(a.clock);
-    });
+  });
 }
 
 export async function getHosts(limit = 500): Promise<ZabbixHost[]> {
@@ -552,20 +552,21 @@ export async function getHosts(limit = 500): Promise<ZabbixHost[]> {
 export async function getRecentEvents(limit = 50, lookbackHours = 168): Promise<ZabbixEvent[]> {
   const since = Math.floor(Date.now() / 1000) - Math.max(1, lookbackHours) * 3600;
   const allowedHosts = await getAllowedHosts(1000);
-  const allowedHostIds = new Set(allowedHosts.map((host) => host.hostid));
+  if (allowedHosts.length === 0) return [];
 
-  const events = await zabbixRequest<ZabbixEvent[]>('event.get', {
+  const allowedHostIds = allowedHosts.map((host) => host.hostid);
+
+  return zabbixRequest<ZabbixEvent[]>('event.get', {
     output: ['eventid', 'clock', 'name', 'severity', 'acknowledged', 'value'],
     selectHosts: ['hostid', 'name'],
     selectAcknowledges: ['clock', 'message', 'users'],
+    hostids: allowedHostIds,
     sortfield: 'clock',
     sortorder: 'DESC',
     time_from: since,
     value: 1,
     limit,
   });
-
-  return events.filter((event) => (event.hosts || []).some((host) => allowedHostIds.has(host.hostid)));
 }
 
 export async function getKeyItems(hostids?: string[]): Promise<ZabbixItem[]> {
