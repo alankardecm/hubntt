@@ -151,7 +151,10 @@ Retomar a partir do PONTO_RECUPERACAO_HUB.md."
 
 ### Pendências abertas
 
-1. **Permissão granular de tabelas no Dashboard** — hoje quem tem acesso ao Dashboard vê TODAS as tabelas do DataLake. Futuramente: definir por usuário quais tabelas ele pode consultar (ex: diretoria vê financeiro, NOC vê fato_solicitacoes, etc.)
+1. **Permissão granular de tabelas no Dashboard** — ✅ implementado. Admin define tabelas por usuário via modal na tela de usuários.
+2. **WhatsApp — substituir BOT_WHITELIST pelo Hub/AD** — ao invés de whitelist estática no .env, usar o phone-email.json + user-registry. Quem tem conta no Hub e fez o registro do número tem acesso ao bot. Quem não tem, recebe mensagem orientando a criar conta.
+3. **Dashboard comparativo de protocolos** — tela/widget mostrando protocolos abertos por dia nas últimas 4 semanas, agrupado por dia da semana. Detecta anomalias: destaque visual quando um dia tem volume 2x acima da média dos mesmos dias anteriores. Usa fato_solicitacoes.data_abertura.
+4. **Zabbix — correlação com IA Comunicação** — card de atenção quando muitos alarmes do mesmo tipo aparecem juntos + alto volume de msgs WA no mesmo período = alerta de evento em curso.
 2. **Tela de login** — design muito intenso, suavizar; logo Netturbo ausente (aguardando arquivo PNG/SVG)
 2. **Diagnóstico (`/settings`)** — ainda usa tema escuro antigo, fora do padrão Netturbo claro
 3. **Bot WhatsApp** — ainda recebe erros 401 para mensagens antigas em cache (residuo da migração wa-bridge → Evolution API); vai sumir naturalmente com o tempo

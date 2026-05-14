@@ -71,6 +71,35 @@ function isMessageUpsert(event: string) {
   return e === 'messagesupsert';
 }
 
+// Deduplicação em memória para respostas do bot — evita responder múltiplas
+// vezes quando a Evolution API faz retry do webhook por timeout
+const botRespondedIds = new Map<string, number>();
+const BOT_DEDUP_TTL_MS = 5 * 60 * 1000; // 5 min
+
+function hasBotResponded(msgId: string): boolean {
+  const ts = botRespondedIds.get(msgId);
+  return ts !== undefined && Date.now() - ts < BOT_DEDUP_TTL_MS;
+}
+
+function markBotResponded(msgId: string) {
+  botRespondedIds.set(msgId, Date.now());
+  // Limpeza periódica para evitar crescimento ilimitado
+  if (botRespondedIds.size > 1000) {
+    const cutoff = Date.now() - BOT_DEDUP_TTL_MS;
+    for (const [id, ts] of botRespondedIds) {
+      if (ts < cutoff) botRespondedIds.delete(id);
+    }
+  }
+}
+
+// Mensagens com mais de 60s são históricas (batch de reconexão da Evolution)
+// O bot não deve responder a elas para evitar spam
+const BOT_RECENCY_WINDOW_MS = 60_000;
+
+function isRecentMessage(timestampSeconds: number): boolean {
+  return Date.now() - timestampSeconds * 1000 < BOT_RECENCY_WINDOW_MS;
+}
+
 export async function POST(req: Request) {
   const payload = (await req.json()) as EvoWebhookPayload;
 
@@ -120,6 +149,11 @@ export async function POST(req: Request) {
 
     if (isGroup(jid)) continue;
     if (!isTextMsg && !isAudioMsg) continue;
+
+    // Ignora mensagens antigas (batch de reconexão) e já respondidas (retry da Evolution)
+    if (!isRecentMessage(item.messageTimestamp)) continue;
+    if (hasBotResponded(item.key.id)) continue;
+    markBotResponded(item.key.id);
 
     // Áudio → NetMeet
     if (isAudioMsg) {
