@@ -102,6 +102,7 @@ export function UserPermissionRow({ user, isSelf }: Props) {
   }
 
   const isSuperadmin = user.role === 'superadmin'
+  const isPreRegistered = !!user.preRegistered
 
   return (
     <tr className="border-b border-gray-100 hover:bg-[#f9faf7] transition-colors group">
@@ -162,14 +163,14 @@ export function UserPermissionRow({ user, isSelf }: Props) {
               </button>
             )}
           </div>
-          <div className="flex items-center gap-1">
-            <span
-              className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isOnline ? 'bg-[#8DC63F] animate-pulse' : 'bg-gray-300'}`}
-            />
-            <span className="text-[9px] text-gray-400 font-medium">
-              {relativeTime(user.lastLogin)}
-            </span>
-          </div>
+          {isPreRegistered ? (
+            <span className="text-[9px] text-amber-500 font-bold">Aguardando 1º login</span>
+          ) : (
+            <div className="flex items-center gap-1">
+              <span className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isOnline ? 'bg-[#8DC63F] animate-pulse' : 'bg-gray-300'}`} />
+              <span className="text-[9px] text-gray-400 font-medium">{relativeTime(user.lastLogin)}</span>
+            </div>
+          )}
         </div>
       </td>
 

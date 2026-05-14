@@ -2,6 +2,7 @@ import { auth } from '@/lib/auth'
 import { redirect } from 'next/navigation'
 import { loadRegistry } from '@/lib/user-registry'
 import { UserPermissionRow } from '@/components/admin/UserPermissionRow'
+import { UsersPageActions } from '@/components/admin/UsersPageActions'
 import Sidebar from '@/components/Sidebar'
 import { Users, ShieldCheck, Wifi, Lock, BarChart2, MessageSquare, Activity, Bell, Smartphone, Database, Search, Video, LogOut } from 'lucide-react'
 
@@ -46,7 +47,7 @@ export default async function UsersPage() {
         <div className="mx-auto max-w-7xl px-6 py-8 flex flex-col gap-6">
 
           {/* Cabeçalho */}
-          <div className="flex items-start justify-between">
+          <div className="flex items-start justify-between gap-4 flex-wrap">
             <div>
               <div className="flex items-center gap-2 mb-1">
                 <Users className="h-4 w-4 text-[#8DC63F]" />
@@ -61,6 +62,7 @@ export default async function UsersPage() {
                 Gerencie quem pode acessar cada módulo do Hub. Alterações entram em vigor no próximo login do usuário.
               </p>
             </div>
+            <UsersPageActions />
           </div>
 
           {/* Stats */}

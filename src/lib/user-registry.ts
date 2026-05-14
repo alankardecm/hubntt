@@ -14,6 +14,7 @@ export interface RegistryUser {
   lastLogin: string
   pages: UserPages
   tokenVersion: number
+  preRegistered?: boolean  // cadastrado pelo admin sem ter feito login ainda
 }
 
 export type UserRegistry = Record<string, RegistryUser>
@@ -54,6 +55,7 @@ export function registerLogin(params: {
     lastLogin: now,
     pages: existing?.pages ?? (params.role === 'superadmin' ? SUPERADMIN_PAGES : DEFAULT_PAGES),
     tokenVersion: existing?.tokenVersion ?? 0,
+    preRegistered: false,  // ao fazer login, deixa de ser pré-cadastrado
   }
 
   registry[params.email] = user
@@ -109,6 +111,42 @@ export function setUserRole(email: string, role: 'admin' | 'user'): boolean {
 
 export function getRegistryUser(email: string): RegistryUser | null {
   return loadRegistry()[email] ?? null
+}
+
+// Verifica se email existe no registro (logado OU pré-cadastrado)
+export function isEmailKnown(email: string): boolean {
+  return email in loadRegistry()
+}
+
+// Pré-cadastra um usuário pelo admin (sem precisar de login)
+export function preRegisterUser(name: string, email: string): boolean {
+  const registry = loadRegistry()
+  if (registry[email]) {
+    // Já existe — apenas garante que não está marcado como pré-cadastrado se já logou
+    return true
+  }
+  const user: RegistryUser = {
+    name,
+    email,
+    role: 'user',
+    firstLogin: '',
+    lastLogin: '',
+    pages: DEFAULT_PAGES,
+    tokenVersion: 0,
+    preRegistered: true,
+  }
+  registry[email] = user
+  saveRegistry(registry)
+  return true
+}
+
+// Remove pré-cadastro (apenas se ainda não tiver logado)
+export function removePreRegisteredUser(email: string): boolean {
+  const registry = loadRegistry()
+  if (!registry[email]?.preRegistered) return false
+  delete registry[email]
+  saveRegistry(registry)
+  return true
 }
 
 export function updateUserTables(email: string, tables: string[]): boolean {

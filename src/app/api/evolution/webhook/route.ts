@@ -3,9 +3,10 @@ import { persistInboundCommunication } from '@/modules/communication/application
 import { handleBotMessage } from '@/lib/evolution-bot';
 import { sendText } from '@/lib/evolution-api';
 import { handleAudioMeeting } from '@/lib/netmeet-whatsapp';
-import { registerLid, resolveReplyTarget, isRegistered, isWhitelisted } from '@/lib/bot-registry';
+import { registerLid, resolveReplyTarget } from '@/lib/bot-registry';
 import { getEmailByPhone, registerPhoneEmail, isPhoneRegistered } from '@/lib/phone-email-registry';
 import { savePendingAudio, getPendingAudio, clearPendingAudio } from '@/lib/pending-audio';
+import { isEmailKnown } from '@/lib/user-registry';
 
 // Payload da Evolution API v1.x — evento MESSAGES_UPSERT
 // data é um array de mensagens
@@ -120,30 +121,23 @@ export async function POST(req: Request) {
     if (isGroup(jid)) continue;
     if (!isTextMsg && !isAudioMsg) continue;
 
-    // Áudio → NetMeet: registra email se necessário, depois gera ata
+    // Áudio → NetMeet
     if (isAudioMsg) {
       const replyPhone = resolveReplyTarget(jid);
       const replyTo    = replyPhone ?? (!jid.includes('@lid') ? jid.split('@')[0] : null);
-      if (replyTo && isWhitelisted(replyTo)) {
+      if (replyTo) {
         const email = getEmailByPhone(replyTo);
         if (email) {
-          // Já registrado — processa direto
           handleAudioMeeting(instance, item, replyTo, email, item.pushName)
             .catch(err => console.error('[NetMeet] erro ao processar áudio:', err));
         } else {
-          // Salva áudio pendente e pede o email
           savePendingAudio(replyTo, {
-            instance,
-            item,
-            replyTo,
+            instance, item, replyTo,
             pushName: item.pushName ?? '',
             timestamp: new Date().toISOString(),
           });
           sendText(instance, replyTo,
-            '🎙️ *Áudio recebido!*\n\n' +
-            'Para salvar a ata no Hub Netturbo com seu nome, informe seu email corporativo:\n' +
-            '_(ex: joao.silva@netturbo.com.br)_\n\n' +
-            'Isso só precisa ser feito uma vez. Depois disso suas atas ficam disponíveis direto no Hub. 😊'
+            '🎙️ *Áudio recebido!*\n\nInforme seu email corporativo para salvar a ata:\n_(ex: joao.silva@netturbo.com.br)_'
           ).catch(err => console.error('[NetMeet] erro ao pedir email:', err));
         }
       }
@@ -170,12 +164,6 @@ export async function POST(req: Request) {
     const replyPhone = resolveReplyTarget(jid);
     const replyTo    = replyPhone ?? (!jid.includes('@lid') ? jid.split('@')[0] : null);
 
-    // Verifica whitelist
-    if (replyTo && !isWhitelisted(replyTo)) {
-      console.warn(`[Bot] número não autorizado: ${replyTo}`);
-      continue;
-    }
-
     if (!replyTo) {
       // LID ainda não registrado — tenta avisar (vai falhar silenciosamente)
       sendText(instance, jid,
@@ -184,16 +172,22 @@ export async function POST(req: Request) {
       continue;
     }
 
-    // Detecção de email corporativo — resposta ao pedido do NetMeet
+    // Detecção de email — registro de usuário no bot
     const emailMatch = text.match(/^[\w.+-]+@[\w-]+\.[\w.]+$/)
     if (emailMatch) {
       const email = emailMatch[0].toLowerCase()
+      // Verifica se o email existe no Hub (logado ou pré-cadastrado)
+      if (!isEmailKnown(email)) {
+        sendText(instance, replyTo,
+          `❌ Email *${email}* não encontrado no Hub Netturbo.\n\nPeça ao administrador para cadastrá-lo ou acesse ${process.env.NEXTAUTH_URL ?? 'o Hub'} para fazer login.`
+        ).catch(() => {})
+        continue
+      }
+      registerPhoneEmail(replyTo, email)
       const pending = getPendingAudio(replyTo)
       if (pending) {
-        registerPhoneEmail(replyTo, email)
         clearPendingAudio(replyTo)
-        sendText(instance, replyTo, `✅ Email *${email}* registrado! Processando sua ata agora...`)
-          .catch(() => {})
+        sendText(instance, replyTo, `✅ Email *${email}* registrado! Processando sua ata agora...`).catch(() => {})
         handleAudioMeeting(
           pending.instance,
           pending.item as Parameters<typeof handleAudioMeeting>[1],
@@ -201,8 +195,20 @@ export async function POST(req: Request) {
           email,
           pending.pushName,
         ).catch(err => console.error('[NetMeet] erro ao processar áudio pendente:', err))
-        continue
+      } else {
+        sendText(instance, replyTo,
+          `✅ Email *${email}* registrado! Agora pode usar o assistente normalmente.\n\nTente: *status*, *oi* ou faça uma pergunta sobre os dados.`
+        ).catch(() => {})
       }
+      continue
+    }
+
+    // Verifica se o número está autorizado (tem email registrado no bot)
+    if (!isPhoneRegistered(replyTo)) {
+      sendText(instance, replyTo,
+        '👋 Para usar o assistente, informe seu email corporativo:\n_(ex: joao.silva@netturbo.com.br)_'
+      ).catch(() => {})
+      continue
     }
 
     // Fire-and-forget
