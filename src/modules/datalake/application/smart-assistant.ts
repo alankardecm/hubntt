@@ -65,16 +65,16 @@ async function identifyRelevantTable(prompt: string, tables: DatalakeTableInfo[]
           content: `Voce e um assistente de banco de dados especializado em ISP brasileiro. Dada a lista de tabelas e o pedido do usuario, identifique qual tabela (APENAS UMA) e a mais relevante.
 Tabelas disponiveis: ${tableNames}
 
-Mapeamento obrigatorio de termos de negocio:
-- "protocolo", "protocolos", "numero de protocolo", "quantidade de protocolo", "chamado", "chamados" -> fato_solicitacoes
-- "atendimento", "atendimentos", "sla de atendimento", "fila de atendimento", "atendente", "equipe" -> fato_solicitacoes
-- "quantos contratos", "numero de contratos", "contratos por cliente", "contratos do cliente", "contratos aprovados", "contratos ativos", "contratos cancelados" -> crm_Funter
-- Se o pedido menciona o NOME de um cliente especifico (ex: "cliente CLARO", "contratos da OI") use crm_Funter.
-- crm_Funter tem UMA LINHA POR CONTRATO. Use para contar contratos. Coluna de data: dt_cadastro. Coluna de status: estagio. Coluna de nome do cliente: cliente.
-- fato_contratos tem UMA LINHA POR EVENTO (muitas por contrato). Use APENAS para metricas financeiras como valor_total agregado por periodo.
-- "valor total dos contratos", "receita", "faturamento", "soma de valor" -> fato_contratos com aggregation sum em valor_total.
+Mapeamento OBRIGATORIO de termos de negocio (prioridade maxima):
+- "protocolo", "protocolos", "chamado", "chamados", "solicitacao", "solicitacoes", "atendimento", "atendimentos" → fato_solicitacoes
+- "por equipe", "classificar por equipe", "equipe de atendimento", "atendente", "fila de atendimento", "sla" → fato_solicitacoes
+- "contratos ativos", "contratos cancelados", "contratos aprovados", "quantos contratos", "numero de contratos", "contratos por mes" → crm_Funter
+- "valor dos contratos", "receita total", "soma de valor", "faturamento" → fato_contratos
+- crm_Funter: UMA linha por contrato. Data = dt_cadastro. Status = estagio. Nome cliente = cliente.
+- fato_solicitacoes: UMA linha por protocolo/solicitacao. Data abertura = data_abertura. Equipe = equipe. Atendente = atendente.
+- fato_contratos: UMA linha por EVENTO financeiro. Use SOMENTE para somar valor_total.
 
-Responda APENAS com o nome da tabela. Se nenhuma for relevante, responda "none".`
+Responda APENAS com o nome exato da tabela. Se nenhuma for relevante, responda "none".`
         },
         {
           role: 'user',
@@ -126,45 +126,54 @@ Colunas disponiveis: ${columns}
 VALORES REAIS DAS COLUNAS CATEGORICAS (use exatamente esses valores nos filtros):
 ${samplesText || '  (nenhum disponivel)'}
 
-Mapeamento de termos de negocio para esta tabela:
-- Se a tabela for crm_solicitacoes: "protocolo" e "solicitacao" sao o mesmo conceito. COUNT(*) = quantidade de protocolos abertos.
-- Se a tabela for fato_solicitacoes: "atendimento" e o termo principal. Use sla_segundos para metricas de SLA e tempo. Para filtrar por nome de cliente use nome_cliente com operador "contains".
-- Se a tabela for fato_contratos: "contrato" e "assinante" sao equivalentes.
-- Se a tabela for crm_Funter: cada linha e um contrato. Colunas: "cliente" (nome do cliente), "contrato" (numero), "estagio" (status do contrato), "dt_cadastro" (data de cadastro - use como dateColumn), "valor" (valor do contrato). NUNCA use fato_contratos para contar contratos.
+MAPEAMENTO DE TERMOS DE NEGOCIO:
+- Tabela fato_solicitacoes: "protocolo", "protocolos", "chamado", "chamados", "solicitacao" sao o mesmo conceito. COUNT(*) = quantidade de protocolos. Coluna de data de abertura = data_abertura. Coluna de equipe = equipe. Coluna de atendente = atendente.
+- Tabela fato_solicitacoes: "abertos em X" = filtrar por data_abertura no periodo X. NUNCA filtrar por status para "abertos em periodo".
+- Tabela crm_Funter: cada linha e um contrato. "cliente" = nome, "estagio" = status, "dt_cadastro" = data, "valor" = valor do contrato.
+- Tabela fato_contratos: use APENAS para metricas financeiras (soma de valor_total). NUNCA para contar contratos.
 
-IMPORTANTE: Use os VALORES REAIS listados acima para os filtros. Se o usuario pedir "aprovados", escolha o valor da lista de estagio/status que mais se aproxima semanticamente.
+REGRAS DE AGRUPAMENTO TEMPORAL (timeBucket) - OBRIGATORIO quando usuario pede "por mes", "mensal", etc:
+- "por mes", "mensal", "cada mes", "evolucao mensal", "por mes em X" → timeBucket: "month", x: <dateColumn>, chartType: "bar" ou "line"
+- "por dia", "diario" → timeBucket: "day", x: <dateColumn>, chartType: "line"
+- "por ano", "anual" → timeBucket: "year", x: <dateColumn>, chartType: "bar"
+- REGRA CRITICA: quando houver timeBucket month/day/year, o campo x DEVE ser IGUAL ao dateColumn.
+- NUNCA use chartType "metric" quando o usuario pedir agrupamento temporal.
 
-Regras CRITICAS para gerar o JSON:
-- Gere ate 3 sugestoes de widgets no array "suggestions"
-- Cada sugestao deve ter:
-  - title: Titulo amigavel em portugues
-  - chartType: line, bar, area, pie, table, metric
-  - table: "${table}"
-  - x: nome da coluna para o eixo X (se aplicavel)
-  - metric: nome da coluna para o calculo (se aplicavel)
-  - aggregation: count, sum, avg, min, max
-  - filterColumn: nome da coluna para o primeiro filtro (se houver)
-  - filterOperator: eq, neq, contains, gte, lte, gt, lt
-  - filterValue: valor do primeiro filtro (SEMPRE string, nunca numero)
-  - filter2Column: nome da coluna para o segundo filtro (se houver)
-  - filter2Operator: eq, neq, contains, gte, lte, gt, lt
-  - filter2Value: valor do segundo filtro (SEMPRE string)
-  - dateColumn: coluna de data para o recorte temporal (se houver)
-  - dateFrom: data inicial YYYY-MM-DD
-  - dateTo: data final YYYY-MM-DD
-  - rationale: explicacao de por que esse widget e util para o pedido do usuario.
+REGRAS DE AGRUPAMENTO POR DIMENSAO:
+- "classifique por equipe", "por equipe", "distribuicao por equipe" → x: "equipe", chartType: "bar"
+- "por atendente" → x: "atendente", chartType: "bar"
+- "por cidade" → x: "cidade", chartType: "bar"
+- "por tipo" → x: "tipo", chartType: "bar"
+- "por status" → x: "status", chartType: "pie" ou "bar"
+- "por cliente" → x: "cliente" ou "nome_cliente", chartType: "bar"
+- Quando usuario pede classificacao por dimensao, NUNCA use chartType "metric".
 
-REGRAS DE AGREGACAO (OBRIGATORIAS):
-- "quantos", "quantidade", "total de registros", "numero de" -> aggregation: "count", metric: null. NUNCA use sum para contar registros.
-- "valor total", "receita", "faturamento", "soma de valor" -> aggregation: "sum" com metric na coluna de valor.
-- "media", "ticket medio" -> aggregation: "avg".
-- NUNCA some colunas de valor quando o usuario pergunta quantidade/contagem.
+CAMPOS DO JSON (gere ate 3 sugestoes):
+- title: titulo amigavel em portugues
+- chartType: line, bar, area, pie, table, metric
+- table: "${table}"
+- x: coluna do eixo X OU dateColumn quando timeBucket ativo
+- metric: coluna numerica para calculo (null para count)
+- aggregation: count, sum, avg, min, max
+- timeBucket: none, day, month, year (obrigatorio quando pedido temporal)
+- filterColumn, filterOperator, filterValue: primeiro filtro
+- filter2Column, filter2Operator, filter2Value: segundo filtro
+- dateColumn: coluna de data para recorte temporal
+- dateFrom: data inicial YYYY-MM-DD
+- dateTo: data final YYYY-MM-DD
+- rationale: justificativa do widget
+
+REGRAS DE AGREGACAO:
+- "quantos", "quantidade", "numero de" → aggregation: "count", metric: null
+- "valor total", "soma" → aggregation: "sum" com metric na coluna de valor
+- "media" → aggregation: "avg"
+- NUNCA some colunas de valor quando o usuario pede quantidade.
 
 REGRAS DE FILTRO:
-- Use EXATAMENTE os valores reais listados acima. Prefira "contains" para evitar erros de case ou espacos.
-- Para meses: "marco 2026" -> dateFrom: "2026-03-01", dateTo: "2026-03-31".
-- Para nomes de clientes: sempre use filterOperator: "contains".
-- Use APENAS as colunas fornecidas.
+- Use os valores reais listados acima. Prefira "contains" para strings.
+- Para nomes de clientes: filterOperator "contains".
+- Para anos: dateFrom: "2026-01-01", dateTo: "2026-12-31".
+- Use APENAS colunas listadas acima.
 
 Responda APENAS o JSON.`
         },
