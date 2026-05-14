@@ -14,6 +14,18 @@ import {
   Clock,
   Zap,
   X,
+  Unplug,
+  Share2,
+  Cpu,
+  Database,
+  Radio,
+  Cable,
+  Server,
+  Eye,
+  Layers,
+  TrendingDown,
+  HelpCircle,
+  TriangleAlert,
 } from 'lucide-react';
 import { CartesianGrid, Line, LineChart, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 
@@ -86,6 +98,39 @@ type AvailabilitySeries = {
 };
 
 type GroupKey = 'all' | 'backbone' | 'pop' | 'rede-acesso' | 'clientes';
+
+type AlarmCategory = 'pppoe' | 'sdwan' | 'snmp' | 'memory' | 'modulation' | 'interface' | 'equipment' | 'icmp' | 'optical' | 'onu' | 'quality' | 'other';
+
+const CATEGORY_CONFIG: Record<AlarmCategory, { label: string; Icon: React.ElementType; color: string; border: string; bg: string }> = {
+  pppoe:      { label: 'PPPoE',       Icon: Unplug,       color: 'text-fuchsia-400', border: 'border-fuchsia-500/30', bg: 'bg-fuchsia-500/10' },
+  sdwan:      { label: 'SD-WAN',      Icon: Share2,       color: 'text-blue-400',    border: 'border-blue-500/30',    bg: 'bg-blue-500/10' },
+  snmp:       { label: 'SNMP',        Icon: Cpu,          color: 'text-amber-400',   border: 'border-amber-500/30',   bg: 'bg-amber-500/10' },
+  memory:     { label: 'Memória',     Icon: Database,     color: 'text-orange-400',  border: 'border-orange-500/30',  bg: 'bg-orange-500/10' },
+  modulation: { label: 'Modulação',   Icon: Radio,        color: 'text-sky-400',     border: 'border-sky-500/30',     bg: 'bg-sky-500/10' },
+  interface:  { label: 'Interface',   Icon: Cable,        color: 'text-yellow-400',  border: 'border-yellow-500/30',  bg: 'bg-yellow-500/10' },
+  equipment:  { label: 'Equipamento', Icon: Server,       color: 'text-red-400',     border: 'border-red-500/30',     bg: 'bg-red-500/10' },
+  icmp:       { label: 'Latência',    Icon: Activity,     color: 'text-green-400',   border: 'border-green-500/30',   bg: 'bg-green-500/10' },
+  optical:    { label: 'Óptica',      Icon: Eye,          color: 'text-purple-400',  border: 'border-purple-500/30',  bg: 'bg-purple-500/10' },
+  onu:        { label: 'ONU/GPON',    Icon: Layers,       color: 'text-teal-400',    border: 'border-teal-500/30',    bg: 'bg-teal-500/10' },
+  quality:    { label: 'Qualidade',   Icon: TrendingDown, color: 'text-rose-400',    border: 'border-rose-500/30',    bg: 'bg-rose-500/10' },
+  other:      { label: 'Outros',      Icon: HelpCircle,   color: 'text-stone-400',   border: 'border-stone-500/20',   bg: 'bg-stone-500/5' },
+};
+
+function classifyProblem(name: string): AlarmCategory {
+  const n = name.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  if (n.includes('pppoe')) return 'pppoe';
+  if (n.includes('sd-wan') || n.includes('sdwan')) return 'sdwan';
+  if (n.includes('snmp')) return 'snmp';
+  if (n.includes('memor')) return 'memory';
+  if (n.includes('modula')) return 'modulation';
+  if (n.includes('consumo zero') || n.includes('descarte') || n.includes('crc') || n.includes('interface')) return 'interface';
+  if (n.includes('indisponivel') || n.includes('indisponiv') || n.includes('restarted') || n.includes('reiniciado')) return 'equipment';
+  if (n.includes('latencia') || n.includes('icmp')) return 'icmp';
+  if (n.includes('atenuacao') || n.includes('potencia') || n.includes('rxpower') || n.includes('optic') || n.includes('transceptor')) return 'optical';
+  if (n.includes('onu') || n.includes('gpon')) return 'onu';
+  if (n.includes('pontuacao') || n.includes('qualidade') || n.includes('pro-ativo') || n.includes('pro ativo')) return 'quality';
+  return 'other';
+}
 
 type GroupCard = {
   key: GroupKey;
@@ -262,6 +307,7 @@ export default function ZabbixDashboard() {
   const [activeTab, setActiveTab] = useState<'problems' | 'hosts' | 'events'>('problems');
   const [hostFilter, setHostFilter] = useState<'all' | 'down' | 'up'>('all');
   const [groupFilter, setGroupFilter] = useState<GroupKey>('all');
+  const [categoryFilter, setCategoryFilter] = useState<AlarmCategory | 'all'>('all');
   const permissionDenied =
     error.includes('No permissions to call') ||
     error.includes('ZABBIX_PERMISSION_DENIED') ||
@@ -337,13 +383,29 @@ export default function ZabbixDashboard() {
     return acc;
   }, {} as Record<string, GroupKey[]>);
 
+  // Categorias dos alarmes
+  const categoryStats = Object.keys(CATEGORY_CONFIG).map((cat) => {
+    const key = cat as AlarmCategory;
+    const count = problems.filter(p => classifyProblem(p.name) === key).length;
+    return { key, count };
+  }).filter(s => s.count > 0).sort((a, b) => b.count - a.count);
+
+  // Card de atenção: categoria com concentração anormal (≥5 ou >40% do total)
+  const attentionCategory = categoryStats.find(s =>
+    s.count >= 5 || (problems.length > 0 && s.count / problems.length > 0.4)
+  );
+
   const filteredProblems = problems.filter((problem) => {
-    if (groupFilter === 'all') return true;
-    return (problem.hosts || []).some((host) => {
-      const hostRecord = hosts.find((candidate) => candidate.hostid === host.hostid);
-      if (!hostRecord) return false;
-      return getOperationalGroupKeys(hostRecord, problem.name).includes(groupFilter);
-    });
+    if (groupFilter !== 'all') {
+      const matchGroup = (problem.hosts || []).some((host) => {
+        const hostRecord = hosts.find((candidate) => candidate.hostid === host.hostid);
+        if (!hostRecord) return false;
+        return getOperationalGroupKeys(hostRecord, problem.name).includes(groupFilter);
+      });
+      if (!matchGroup) return false;
+    }
+    if (categoryFilter !== 'all' && classifyProblem(problem.name) !== categoryFilter) return false;
+    return true;
   });
 
   const filteredEvents = events.filter((event) => {
@@ -528,6 +590,68 @@ export default function ZabbixDashboard() {
             ))}
           </div>
 
+          {/* ── CARD DE ATENÇÃO ── */}
+          {attentionCategory && !loading && (
+            <motion.div
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="rounded-[28px] border border-amber-500/30 bg-amber-500/10 p-5 flex items-start gap-4"
+            >
+              <TriangleAlert className="w-5 h-5 text-amber-400 flex-shrink-0 mt-0.5" />
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">Concentração de alarmes detectada</p>
+                <p className="mt-1 text-sm font-bold text-amber-200">
+                  {attentionCategory.count} alarmes do tipo <span className="font-black">{CATEGORY_CONFIG[attentionCategory.key].label}</span> ativos simultaneamente
+                  {attentionCategory.count >= 5 ? ' — provável evento em larga escala ou falha de equipamento de agregação.' : '.'}
+                </p>
+                <button
+                  onClick={() => { setActiveTab('problems'); setCategoryFilter(attentionCategory.key); }}
+                  className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-amber-400 hover:underline"
+                >
+                  Ver alarmes {CATEGORY_CONFIG[attentionCategory.key].label} →
+                </button>
+              </div>
+            </motion.div>
+          )}
+
+          {/* ── CATEGORIAS DE ALARMES ── */}
+          {!loading && categoryStats.length > 0 && (
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-stone-500 mb-3">Tipos de alarme</p>
+              <div className="flex flex-wrap gap-2">
+                <button
+                  onClick={() => setCategoryFilter('all')}
+                  className={`rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                    categoryFilter === 'all'
+                      ? 'bg-white text-black border-white'
+                      : 'border-white/10 bg-white/[0.02] text-stone-400 hover:text-white'
+                  }`}
+                >
+                  Todos ({problems.length})
+                </button>
+                {categoryStats.map(({ key, count }) => {
+                  const cfg = CATEGORY_CONFIG[key];
+                  const isActive = categoryFilter === key;
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => { setCategoryFilter(key); setActiveTab('problems'); }}
+                      className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] transition-all ${
+                        isActive ? `${cfg.bg} ${cfg.border} ${cfg.color}` : 'border-white/10 bg-white/[0.02] text-stone-400 hover:text-white'
+                      }`}
+                    >
+                      <cfg.Icon className="w-3 h-3" />
+                      {cfg.label}
+                      <span className={`rounded-full px-1.5 py-0.5 text-[9px] ${isActive ? 'bg-white/20' : 'bg-white/10'}`}>
+                        {count}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           <div className="rounded-[28px] border border-white/10 bg-white/[0.03] p-4">
             <div className="flex items-center justify-between gap-3 flex-wrap">
               <div>
@@ -623,7 +747,10 @@ export default function ZabbixDashboard() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {filteredProblems.map((p) => (
+                    {filteredProblems.map((p) => {
+                      const cat = classifyProblem(p.name);
+                      const catCfg = CATEGORY_CONFIG[cat];
+                      return (
                       <div
                         key={p.eventid}
                         className={`rounded-[24px] border p-5 ${SEVERITY_BG[p.severity] || 'border-white/5 bg-white/[0.02]'}`}
@@ -634,6 +761,13 @@ export default function ZabbixDashboard() {
                               <span className={`rounded-full border px-3 py-0.5 text-[9px] font-black uppercase tracking-[0.22em] ${SEVERITY_BADGE[p.severity] || ''}`}>
                                 {SEVERITY_LABEL[p.severity] || p.severity}
                               </span>
+                              <button
+                                onClick={() => setCategoryFilter(cat === categoryFilter ? 'all' : cat)}
+                                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.18em] transition-all ${catCfg.border} ${catCfg.bg} ${catCfg.color}`}
+                              >
+                                <catCfg.Icon className="w-2.5 h-2.5" />
+                                {catCfg.label}
+                              </button>
                               {p.acknowledged === '1' && (
                                 <span className="rounded-full border border-stone-500/20 bg-stone-500/10 px-3 py-0.5 text-[9px] font-black uppercase tracking-[0.22em] text-stone-400">
                                   Ack
@@ -660,7 +794,7 @@ export default function ZabbixDashboard() {
                           </div>
                         )}
                       </div>
-                    ))}
+                    );})}
                   </div>
                 )}
               </motion.div>
