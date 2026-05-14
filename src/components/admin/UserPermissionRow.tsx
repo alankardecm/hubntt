@@ -157,25 +157,6 @@ export function UserPermissionRow({ user, isSelf }: Props) {
         )}
       </td>
 
-      {/* Force Logout */}
-      <td className="py-4 px-3 text-center">
-        <button
-          onClick={handleForceLogout}
-          disabled={loggingOut}
-          title={loggedOut ? 'Logout forçado — próxima requisição será redirecionada' : 'Forçar logout'}
-          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${
-            loggedOut
-              ? 'bg-amber-100 text-amber-500 cursor-default'
-              : 'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600'
-          } disabled:opacity-50 disabled:cursor-not-allowed`}
-        >
-          {loggingOut
-            ? <span className="h-3 w-3 rounded-full border-2 border-red-200 border-t-red-500 animate-spin" />
-            : <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
-          }
-        </button>
-      </td>
-
       {/* Páginas simples */}
       {SIMPLE_PAGES.map(({ key, label, Icon }) => {
         const enabled = pages[key as keyof UserPages] as boolean
@@ -203,6 +184,25 @@ export function UserPermissionRow({ user, isSelf }: Props) {
           </td>
         )
       })}
+
+      {/* Force Logout — sempre no final */}
+      <td className="py-4 px-3 text-center">
+        <button
+          onClick={handleForceLogout}
+          disabled={loggingOut}
+          title={loggedOut ? 'Kick enviado — sessão será invalidada no próximo acesso' : 'Forçar logout (kick)'}
+          className={`inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${
+            loggedOut
+              ? 'bg-amber-100 text-amber-500 cursor-default'
+              : 'bg-red-50 text-red-400 hover:bg-red-100 hover:text-red-600'
+          } disabled:opacity-50 disabled:cursor-not-allowed`}
+        >
+          {loggingOut
+            ? <span className="h-3 w-3 rounded-full border-2 border-red-200 border-t-red-500 animate-spin" />
+            : <LogOut className="h-3.5 w-3.5" strokeWidth={2} />
+          }
+        </button>
+      </td>
     </tr>
   )
 }

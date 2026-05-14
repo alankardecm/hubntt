@@ -27,7 +27,6 @@ export default async function UsersPage() {
   ).length
 
   const PAGE_COLS = [
-    { label: 'Logout',    Icon: LogOut },
     { label: 'Dashboard', Icon: BarChart2, colspan: true },
     { label: 'Chat',      Icon: MessageSquare },
     { label: 'NOC',       Icon: Activity },
@@ -36,6 +35,7 @@ export default async function UsersPage() {
     { label: 'DataLake',  Icon: Database },
     { label: 'RAG',       Icon: Search },
     { label: 'NetMeet',   Icon: Video },
+    { label: 'Logout',    Icon: LogOut },
   ]
 
   return (
