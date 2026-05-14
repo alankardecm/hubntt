@@ -4,7 +4,44 @@ Este arquivo serve como checkpoint oficial para retomada rapida do HUB na proxim
 
 ---
 
-## PONTO DE RECUPERACAO ATUAL (14/05/2026 — sessao autenticação Azure AD)
+## PONTO DE RECUPERACAO ATUAL (14/05/2026 — sessao completa)
+
+### Resumo da sessao de hoje (para retomada rapida)
+
+**O que foi feito:**
+1. **Autenticação Azure AD** — NextAuth v5, Microsoft Entra ID, tela de login cyber green com logo Netturbo
+2. **Nginx HTTPS** — certificado autoassinado, porta 4200 fechada externamente via nftables
+3. **Gestão de usuários** — `/settings/users` com permissões por página, toggle dashboard VER/EDI, force logout
+4. **Privacidade NetMeet** — fone→email via WhatsApp, cada usuário vê só suas atas, download TXT
+5. **NetMeet no menu** — Whisper-1 (mais rápido), aceita áudio como documento WA
+6. **Permissões de tabelas no Dashboard** — admin define quais tabelas cada usuário pode consultar
+7. **Smart assistant corrigido** — timeBucket por mês, agrupamento por equipe/dimensão
+8. **Segurança** — ntt.alertas bloqueado, users.json zerado, porta 4200 fechada
+
+**Último commit:** `56782d6` (master)
+
+**Próximo passo prioritário:** Deploy do commit de tabelas + testes de permissão no Dashboard
+
+**Regra de trabalho:** sempre fazer backup antes de editar arquivos; git push só com autorização explícita do usuário.
+
+### Padrão de permissões novos usuários
+- Chat: ✅ habilitado
+- NetMeet: ✅ habilitado
+- Dashboard, Monitoring, Zabbix, WhatsApp, DataLake, RAG: ❌ desabilitado
+- Tabelas Dashboard: [] (nenhuma — admin configura via modal)
+
+### Contas especiais
+- `alan.moreira@netturbo.com.br` = superadmin (hardcoded em auth.ts)
+- `ntt.alertas@netturbo.com.br` = BLOQUEADO (hardcoded em BLOCKED_EMAILS)
+
+### Mapeamento fone→email (NetMeet)
+- Arquivo: `.runtime/phone-email.json`
+- Gerado automaticamente quando usuário envia email no WhatsApp
+- Áudio pendente expira em 10 minutos: `.runtime/pending-audio.json`
+
+---
+
+## PONTO DE RECUPERACAO ANTERIOR (14/05/2026 — sessao autenticação Azure AD)
 
 ### Resumo da sessao de hoje (para retomada rapida)
 
