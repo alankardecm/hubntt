@@ -41,5 +41,11 @@ export const authConfig: NextAuthConfig = {
       }
       return true
     },
+
+    session({ session, token }) {
+      session.user.role = (token.role as string) ?? 'user'
+      session.user.pages = token.pages as UserPages
+      return session
+    },
   },
 }
