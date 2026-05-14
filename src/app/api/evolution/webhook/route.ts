@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { persistInboundCommunication } from '@/modules/communication/application/persist-inbound-communication';
 import { handleBotMessage } from '@/lib/evolution-bot';
 import { sendText } from '@/lib/evolution-api';
+import { handleAudioMeeting } from '@/lib/netmeet-whatsapp';
 import { registerLid, resolveReplyTarget, isRegistered, isWhitelisted } from '@/lib/bot-registry';
 
 // Payload da Evolution API v1.x — evento MESSAGES_UPSERT
@@ -105,14 +106,29 @@ export async function POST(req: Request) {
     })
   );
 
-  // Bot: responde mensagens diretas (não de grupo) com texto
+  // Bot: responde mensagens diretas (não de grupo) — texto e áudio
   for (const item of incoming) {
-    const jid       = item.key.remoteJid;
-    const text      = extractText(item).trim();
-    const isTextMsg = item.messageType === 'conversation' || item.messageType === 'extendedTextMessage';
-    const isDirect  = !isGroup(jid) && isTextMsg;
+    const jid        = item.key.remoteJid;
+    const text       = extractText(item).trim();
+    const isTextMsg  = item.messageType === 'conversation' || item.messageType === 'extendedTextMessage';
+    const isAudioMsg = item.messageType === 'audioMessage';
 
-    if (!isDirect || !text) continue;
+    if (isGroup(jid)) continue;
+    if (!isTextMsg && !isAudioMsg) continue;
+
+    // Áudio → gera ata da reunião e responde via WhatsApp
+    if (isAudioMsg) {
+      const replyPhone = resolveReplyTarget(jid);
+      const replyTo    = replyPhone ?? (!jid.includes('@lid') ? jid.split('@')[0] : null);
+      if (replyTo && isWhitelisted(replyTo)) {
+        handleAudioMeeting(instance, item, replyTo)
+          .catch(err => console.error('[NetMeet] erro ao processar áudio:', err));
+      }
+      continue;
+    }
+
+    // Texto
+    if (!text) continue;
 
     // Comando /start <numero> — registra mapeamento LID → número real
     const startMatch = text.match(/^\/start\s+([\d\s()\-+]+)$/i);

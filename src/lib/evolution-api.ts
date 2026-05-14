@@ -90,3 +90,22 @@ export function sendText(
     body: JSON.stringify({ number, text }),
   });
 }
+
+// ── Mídia ─────────────────────────────────────────────────────────────────────
+
+export type MediaBase64Response = {
+  base64: string;
+  mimetype: string;
+  mediaType?: string;
+  fileName?: string;
+};
+
+export function getMediaBase64(
+  instanceName: string,
+  messageId: string,
+): Promise<MediaBase64Response> {
+  return evo<MediaBase64Response>(`/chat/getBase64FromMediaMessage/${instanceName}`, {
+    method: 'POST',
+    body: JSON.stringify({ message: { key: { id: messageId } }, convertToMp4: false }),
+  });
+}

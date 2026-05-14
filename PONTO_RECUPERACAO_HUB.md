@@ -81,6 +81,7 @@ Retomar a partir do PONTO_RECUPERACAO_HUB.md."
 3. **Autenticação** — planejada via Active Directory (Azure AD / LDAP); não iniciada
 4. **Supabase → PostgreSQL local** — PostgreSQL já instalado no servidor; migração dos dados do Supabase não iniciada
 5. **Alertas proativos Zabbix** — bot enviar mensagem automática ao detectar alarme DISASTER
+6. **NetMeet via WhatsApp** — integração implementada (13/05/2026), aguarda deploy e teste real de áudio (ver seção NetMeet abaixo)
 
 ### Variáveis de ambiente no servidor (`/opt/DESENVOLVIMENTO_E_TESTE/hubntt/.env`)
 
@@ -321,6 +322,57 @@ MYSQL_PASSWORD=ZMaxdnT2I6f8DCaBMnZuU9cklcuH2eeA
 
 ---
 
+## NetMeet via WhatsApp (integrado em 13/05/2026)
+
+### Arquivos criados/modificados
+
+```
+src/lib/netmeet-whatsapp.ts                   — NOVO: transcribe áudio + gera ata + responde WA
+src/lib/evolution-api.ts                       — ADICIONADO: getMediaBase64()
+src/app/api/evolution/webhook/route.ts         — MODIFICADO: detecta audioMessage e aciona NetMeet
+```
+
+### Fluxo
+
+```
+Usuário envia áudio no WhatsApp (número 5519996780064)
+    → webhook detecta messageType === 'audioMessage'
+    → verifica whitelist
+    → responde "Transcrevendo... aguarde"
+    → getMediaBase64 (Evolution API)
+    → OpenAI Whisper (transcrição)
+    → GPT-4o-mini (gera resumo + decisões + tarefas)
+    → salva em .runtime/netmeet/meetings.json (classification: 'whatsapp-audio')
+    → responde ata formatada no WhatsApp
+```
+
+### Variáveis de ambiente necessárias no servidor
+
+Adicionar ao `.env` se ainda não existirem:
+```
+OPENAI_TRANSCRIPTION_MODEL=gpt-4o-transcribe
+# OPENAI_CHAT_MODEL já está configurado (usado pelo bot)
+# OPENAI_API_KEY já está configurado
+```
+
+### Deploy (após git push autorizado)
+
+```bash
+sudo su
+cd /opt/DESENVOLVIMENTO_E_TESTE/hubntt
+pm2 stop hub-ntt-73 && git pull origin master && npm run build && pm2 start hub-ntt-73
+pm2 save
+```
+
+### Ponto de atenção — endpoint de mídia Evolution API v2.3.7
+
+O `getMediaBase64` usa `POST /chat/getBase64FromMediaMessage/{instance}`.
+Se retornar 404 no servidor de produção (v2.3.7 pode ter path diferente), verificar:
+- Documentação: `http://10.250.110.238:8080/docs` (Swagger da Evolution API)
+- Ajustar path em `src/lib/evolution-api.ts` se necessário
+
+---
+
 ## Proximas frentes sugeridas
 
 1. **Relatorio NOC agendado** — ao detectar alarme DISASTER no Zabbix, bot avisa grupo de NOC automaticamente
@@ -328,6 +380,7 @@ MYSQL_PASSWORD=ZMaxdnT2I6f8DCaBMnZuU9cklcuH2eeA
 3. **Persistir registro LID no Supabase** — hoje fica em `.bot-registry.json` local, perde no deploy em servidor
 4. **Envio proativo** — relatorio diario de chamados e status da rede no horario configurado
 5. **Mais tabelas no DataLake** — liberar `fato_pesquisas` (CSAT), `crm_funter` para consulta pelo bot
+6. **Página /meetings no Hub** — dashboard de reuniões gravadas, histórico, reenvio de ata
 
 ---
 
