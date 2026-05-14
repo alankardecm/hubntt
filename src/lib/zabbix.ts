@@ -529,12 +529,14 @@ export async function getActiveProblems(limit = 100): Promise<ZabbixProblem[]> {
 
   const allowedHostIds = allowedHosts.map((host) => host.hostid);
 
-  // Filtra direto na API pelo hostids — evita o problema de selectHosts retornar vazio
+  const thirtyDaysAgo = Math.floor(Date.now() / 1000) - 30 * 24 * 3600;
+
   const problems = await zabbixRequest<ZabbixProblem[]>('problem.get', {
     output: ['eventid', 'objectid', 'clock', 'name', 'severity', 'acknowledged', 'suppressed'],
     selectHosts: ['hostid', 'name'],
     selectTags: ['tag', 'value'],
     hostids: allowedHostIds,
+    time_from: thirtyDaysAgo,
     limit,
   });
 
