@@ -1,6 +1,6 @@
 import { DefaultSession } from "next-auth"
 import "next-auth/jwt"
-import type { UserPages } from "@/lib/user-registry"
+import type { UserPages } from "@/lib/user-pages"
 
 declare module "next-auth" {
   interface Session {

@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import type { RegistryUser, UserPages } from '@/lib/user-registry'
+import type { RegistryUser } from '@/lib/user-registry'
+import type { UserPages } from '@/lib/user-pages'
 import { MessageSquare, BarChart2, Activity, Bell, Smartphone, Database, Search, Video } from 'lucide-react'
 
 const SIMPLE_PAGES = [

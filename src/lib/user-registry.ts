@@ -1,16 +1,9 @@
 import fs from 'fs'
 import path from 'path'
+import type { UserPages } from '@/lib/user-pages'
+import { DEFAULT_PAGES, SUPERADMIN_PAGES } from '@/lib/user-pages'
 
-export interface UserPages {
-  chat: boolean
-  dashboards: false | 'view' | 'edit'
-  monitoring: boolean
-  zabbix: boolean
-  whatsapp: boolean
-  datalake: boolean
-  rag: boolean
-  netmeet: boolean
-}
+export type { UserPages }
 
 export interface RegistryUser {
   name: string
@@ -25,28 +18,6 @@ export interface RegistryUser {
 export type UserRegistry = Record<string, RegistryUser>
 
 const REGISTRY_PATH = path.join(process.cwd(), '.runtime', 'auth', 'users.json')
-
-export const DEFAULT_PAGES: UserPages = {
-  chat: true,
-  dashboards: false,
-  monitoring: false,
-  zabbix: false,
-  whatsapp: false,
-  datalake: false,
-  rag: false,
-  netmeet: false,
-}
-
-export const SUPERADMIN_PAGES: UserPages = {
-  chat: true,
-  dashboards: 'edit',
-  monitoring: true,
-  zabbix: true,
-  whatsapp: true,
-  datalake: true,
-  rag: true,
-  netmeet: true,
-}
 
 export function loadRegistry(): UserRegistry {
   try {
