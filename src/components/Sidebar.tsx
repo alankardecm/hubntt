@@ -3,9 +3,10 @@
 import { usePathname } from 'next/navigation';
 import Link from 'next/link';
 import { Suspense } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   Home, Grid, MessageSquare,
-  Settings,
+  Settings, Users,
   Activity, Database, Bell, BarChart2,
   Bot, TriangleAlert, Smartphone
 } from 'lucide-react';
@@ -24,6 +25,26 @@ const NAV_ITEMS = [
   { icon: MessageSquare, href: '/chat',                    label: 'Chat' },
   { icon: Settings,      href: '/settings',                label: 'Diagnóstico' },
 ];
+
+function SidebarAdminLink() {
+  const pathname = usePathname()
+  const isActive = pathname.startsWith('/settings/users')
+  return (
+    <Link
+      href="/settings/users"
+      title="Usuários"
+      className={`group flex items-center gap-3 rounded-xl px-3 py-2.5 transition-all duration-150 ${
+        isActive ? 'bg-[#8DC63F]/10 text-[#8DC63F]' : 'text-stone-400 hover:bg-[#404040]/5 hover:text-[#404040]'
+      }`}
+    >
+      {isActive && <span className="absolute left-0 top-1/2 h-5 w-[3px] -translate-y-1/2 rounded-r-full bg-[#8DC63F]" />}
+      <Users className={`h-[18px] w-[18px] flex-shrink-0 ${isActive ? 'text-[#8DC63F]' : 'group-hover:text-[#404040]'}`} strokeWidth={isActive ? 2.5 : 1.8} />
+      <span className={`hidden lg:block text-[11px] font-bold uppercase tracking-[0.1em] whitespace-nowrap ${isActive ? 'text-[#8DC63F]' : 'text-stone-500 group-hover:text-[#404040]'}`}>
+        Usuários
+      </span>
+    </Link>
+  )
+}
 
 function SidebarNav() {
   const pathname = usePathname();
@@ -66,6 +87,9 @@ function SidebarNav() {
 }
 
 export default function Sidebar() {
+  const { data: session } = useSession()
+  const isSuperadmin = session?.user?.role === 'superadmin'
+
   return (
     <aside className="z-50 flex h-full w-[72px] lg:w-60 flex-shrink-0 flex-col border-r border-[#404040]/8 bg-white backdrop-blur-xl transition-all duration-300">
 
@@ -95,6 +119,13 @@ export default function Sidebar() {
       }>
         <SidebarNav />
       </Suspense>
+
+      {/* Admin link */}
+      {isSuperadmin && (
+        <div className="px-2 pb-1">
+          <SidebarAdminLink />
+        </div>
+      )}
 
       {/* Footer */}
       <div className="border-t border-[#404040]/6 p-2">
