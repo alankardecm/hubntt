@@ -23,6 +23,10 @@ export type NetMeetMeeting = {
   publishedToTeams: boolean;
   createdAt: string;
   updatedAt: string;
+  // Identificação do usuário (WhatsApp → Azure AD)
+  userEmail?: string;
+  senderPhone?: string;
+  senderName?: string;
 };
 
 const DATA_DIR = path.join(process.cwd(), '.runtime', 'netmeet');

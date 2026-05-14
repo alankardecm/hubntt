@@ -106,6 +106,8 @@ export async function handleAudioMeeting(
     pushName?: string;
   },
   replyTo: string,
+  userEmail?: string,
+  senderName?: string,
 ): Promise<void> {
   await sendText(instance, replyTo, '🎙️ Áudio recebido! Transcrevendo e gerando a ata... aguarde.');
 
@@ -128,6 +130,9 @@ export async function handleAudioMeeting(
     decisions: minutes.decisions,
     actionItems: minutes.tasks.map(t => ({ ...t, status: 'open' as const })),
     provider: 'openai-whisper',
+    userEmail: userEmail ?? undefined,
+    senderPhone: replyTo,
+    senderName: senderName ?? undefined,
   }));
 
   await sendText(instance, replyTo, formatAta(minutes));
