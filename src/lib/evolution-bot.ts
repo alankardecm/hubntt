@@ -71,9 +71,14 @@ async function zabbixStatusReport(): Promise<string> {
 const DATALAKE_SCHEMA = `
 Tabelas disponíveis (USE APENAS ESTAS):
 
-fato_solicitacoes — protocolos/chamados de suporte (dados de 2026)
-  colunas: protocolo(bigint), status(varchar), data_abertura(datetime), data_conclusao(datetime),
-           tipo(varchar), atendente(varchar), equipe(varchar), id_cliente(bigint), etiqueta(varchar)
+fato_solicitacoes — protocolos/chamados de suporte
+  colunas: protocolo(bigint PK), etiqueta(varchar), status(varchar), criticidade(varchar),
+           sla_segundos(decimal), data_abertura(datetime), data_conclusao(datetime),
+           data_prazo(datetime), tipo(varchar), atendente(varchar), equipe(varchar),
+           reabertura(tinyint), telefone_raw(varchar), cod_cliente(bigint),
+           nome_cliente(varchar), localizacao(varchar), bairro(varchar), cidade(varchar),
+           data_ingestao(datetime)
+  IMPORTANTE: nome_cliente e equipe já estão nesta tabela — NÃO precisa de JOIN para isso
   status reais (SOMENTE ESTES EXISTEM): 'Encerramento', 'Cancelado'
   ATENÇÃO: NÃO existe status 'Aberto' nem 'Em Atendimento' nesta tabela
   "protocolos abertos em X" = protocolos cuja data_abertura está no período X (NÃO filtre por status)
@@ -94,11 +99,37 @@ dim_contrato — detalhes dos contratos
 REGRAS DE SQL:
 - "abertos em [período]" = filtrar por data_abertura, NUNCA adicionar filtro de status
 - "sem conclusão" ou "em aberto" = WHERE data_conclusao IS NULL
-- Contar por período: SELECT COUNT(*) FROM fato_solicitacoes WHERE DATE(data_abertura) BETWEEN '2026-03-01' AND '2026-03-31'
-- Clientes com mais protocolos: SELECT dc.nome_cliente, COUNT(*) AS total FROM fato_solicitacoes fs JOIN dim_cliente dc ON fs.id_cliente = dc.id_cliente WHERE DATE(fs.data_abertura) BETWEEN '...' AND '...' GROUP BY dc.nome_cliente ORDER BY total DESC LIMIT 10
+- Equipes/atendentes: SELECT equipe, COUNT(*) AS total FROM fato_solicitacoes WHERE DATE(data_abertura) = CURDATE() GROUP BY equipe ORDER BY total DESC
+- Clientes com mais protocolos: SELECT nome_cliente, COUNT(*) AS total FROM fato_solicitacoes WHERE DATE(data_abertura) BETWEEN '...' AND '...' GROUP BY nome_cliente ORDER BY total DESC LIMIT 10
 - NUNCA filtre por status = 'Aberto' — esse status não existe
 - NUNCA use crm_solicitacoes, fato_atendimentos ou outras tabelas não listadas acima
 `.trim();
+
+// ── Histórico de conversa por número ─────────────────────────────────────────
+
+type ConversationMessage = { role: 'user' | 'assistant'; content: string };
+const conversationSessions = new Map<string, { messages: ConversationMessage[]; lastActivity: number }>();
+const SESSION_TTL_MS = 15 * 60 * 1000; // 15 min sem atividade limpa a sessão
+const MAX_HISTORY_MESSAGES = 8; // 4 trocas (user+assistant)
+
+function getHistory(phone: string): ConversationMessage[] {
+  const session = conversationSessions.get(phone);
+  if (!session || Date.now() - session.lastActivity > SESSION_TTL_MS) {
+    conversationSessions.delete(phone);
+    return [];
+  }
+  return session.messages;
+}
+
+function saveHistory(phone: string, userMsg: string, assistantMsg: string) {
+  const existing = getHistory(phone);
+  const updated = [
+    ...existing,
+    { role: 'user' as const, content: userMsg },
+    { role: 'assistant' as const, content: assistantMsg },
+  ].slice(-MAX_HISTORY_MESSAGES);
+  conversationSessions.set(phone, { messages: updated, lastActivity: Date.now() });
+}
 
 async function getDataFreshness(): Promise<string> {
   if (!isMysqlConfigured()) return '';
@@ -172,10 +203,12 @@ const TOOLS: OpenAI.Chat.ChatCompletionTool[] = [
 export async function handleBotMessage(
   text: string,
   senderName?: string,
+  phone?: string,
 ): Promise<string> {
-  // Resposta imediata para saudações simples
+  // Resposta imediata para saudações simples — limpa o histórico da sessão
   const lower = text.toLowerCase().trim();
   if (['oi', 'olá', 'ola', 'opa', 'hey', 'hi'].includes(lower)) {
+    if (phone) conversationSessions.delete(phone);
     const name = senderName ? `, ${senderName.split(' ')[0]}` : '';
     return [
       `Olá${name}! 👋 Sou o assistente do *Hub Netturbo*.`,
@@ -195,6 +228,7 @@ export async function handleBotMessage(
 
   try {
     const freshness = await getDataFreshness().catch(() => '');
+    const history = phone ? getHistory(phone) : [];
 
     const messages: OpenAI.Chat.ChatCompletionMessageParam[] = [
       {
@@ -202,14 +236,17 @@ export async function handleBotMessage(
         content: [
           'Você é o assistente do Hub Netturbo, respondendo via WhatsApp.',
           'Seja objetivo e use formatação simples (negrito com *, itálico com _).',
+          `Data/hora atual: ${new Date().toLocaleString('pt-BR', { timeZone: 'America/Sao_Paulo' })}.`,
           DATALAKE_SCHEMA,
           freshness,
           'Para perguntas sobre rede, infraestrutura, hosts ou alarmes, use zabbix_status.',
           'Para perguntas sobre chamados, protocolos, contratos ou clientes, use datalake_query com as tabelas acima.',
           'Quando retornar zero resultados, sugira ajustar a data para o período disponível.',
+          'Mantenha contexto da conversa: se o usuário usar "esses", "deles", "desses", refira-se à consulta anterior.',
           'Se não souber, diga claramente o que pode fazer.',
         ].filter(Boolean).join('\n'),
       },
+      ...history,
       { role: 'user', content: text },
     ];
 
@@ -225,7 +262,9 @@ export async function handleBotMessage(
 
     // Sem function call → resposta direta
     if (choice.finish_reason !== 'tool_calls' || !choice.message.tool_calls?.length) {
-      return choice.message.content ?? 'Não entendi. Tente: *status*, ou descreva o que quer saber.';
+      const reply = choice.message.content ?? 'Não entendi. Tente: *status*, ou descreva o que quer saber.';
+      if (phone) saveHistory(phone, text, reply);
+      return reply;
     }
 
     // Executa TODOS os tool calls e responde a todos (OpenAI exige resposta para cada um)
@@ -267,8 +306,10 @@ export async function handleBotMessage(
       max_tokens: 800,
     });
 
-    return second.choices[0].message.content
+    const finalReply = second.choices[0].message.content
       ?? 'Consulta executada mas não consegui formatar a resposta.';
+    if (phone) saveHistory(phone, text, finalReply);
+    return finalReply;
 
   } catch (err) {
     console.error('[Bot] erro:', err);

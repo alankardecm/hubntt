@@ -246,7 +246,7 @@ export async function POST(req: Request) {
     }
 
     // Fire-and-forget
-    handleBotMessage(text, item.pushName ?? undefined)
+    handleBotMessage(text, item.pushName ?? undefined, replyTo)
       .then(reply => sendText(instance, replyTo, reply))
       .catch(err  => console.error('[Bot] falha ao responder:', err));
   }
