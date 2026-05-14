@@ -124,7 +124,7 @@ export function UserPermissionRow({ user, isSelf }: Props) {
               return (
                 <button
                   key={val}
-                  disabled={isSelf || saving === 'dashboards'}
+                  disabled={saving === 'dashboards'}
                   onClick={() => patch({ dashboards: val === 'false' ? false : val })}
                   className={`px-2 py-1.5 transition-colors ${
                     active
@@ -153,7 +153,7 @@ export function UserPermissionRow({ user, isSelf }: Props) {
               <span className="inline-block h-2 w-2 rounded-full bg-[#8DC63F]" />
             ) : (
               <button
-                disabled={isSelf || saving === key}
+                disabled={saving === key}
                 onClick={() => patch({ [key]: !enabled } as Partial<UserPages>)}
                 title={label}
                 className={`relative inline-flex h-7 w-7 items-center justify-center rounded-lg transition-all duration-150 ${

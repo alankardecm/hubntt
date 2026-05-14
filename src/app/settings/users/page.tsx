@@ -154,7 +154,7 @@ export default async function UsersPage() {
             {users.length > 0 && (
               <div className="px-5 py-3 border-t border-gray-100 bg-gray-50/40">
                 <p className="text-[10px] text-gray-400">
-                  {total} {total === 1 ? 'usuário cadastrado' : 'usuários cadastrados'} · Clique nos ícones para alternar permissões · Você mesmo não pode alterar suas próprias permissões
+                  {total} {total === 1 ? 'usuário cadastrado' : 'usuários cadastrados'} · Clique nos ícones para alternar permissões · Alterações entram em vigor no próximo login do usuário
                 </p>
               </div>
             )}
