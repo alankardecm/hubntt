@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMysqlPool, isMysqlConfigured, isSafeTableName, isTableAllowed } from '@/infrastructure/datalake/mysql-client';
+import { auth } from '@/lib/auth';
+import { getUserAllowedTables } from '@/lib/user-registry';
 import type { RowDataPacket } from 'mysql2';
 import mysql from 'mysql2';
 import type { FilterOperator, FilterWarning, QueryResult, TimeBucket } from '@/shared/types/dashboard';
@@ -96,6 +98,14 @@ export async function POST(request: NextRequest) {
 
     if (!table || !isSafeTableName(table) || !isTableAllowed(table)) {
       return NextResponse.json<QueryResult>({ ok: false, data: [], error: 'Tabela invalida ou nao permitida.' }, { status: 400 });
+    }
+
+    // Verifica permissão de tabela por usuário
+    const session = await auth();
+    const userEmail = session?.user?.email ?? '';
+    const userTables = getUserAllowedTables(userEmail);
+    if (userTables !== 'all' && !userTables.includes(table)) {
+      return NextResponse.json<QueryResult>({ ok: false, data: [], error: 'Acesso negado a esta tabela.' }, { status: 403 });
     }
 
     if (!isSafeAggregation(aggregation)) {

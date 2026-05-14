@@ -3,6 +3,7 @@
 export interface UserPages {
   chat: boolean
   dashboards: false | 'view' | 'edit'
+  dashboardTables: string[]          // tabelas liberadas no dashboard ([] = nenhuma)
   monitoring: boolean
   zabbix: boolean
   whatsapp: boolean
@@ -14,6 +15,7 @@ export interface UserPages {
 export const DEFAULT_PAGES: UserPages = {
   chat: true,
   dashboards: false,
+  dashboardTables: [],
   monitoring: false,
   zabbix: false,
   whatsapp: false,
@@ -25,6 +27,7 @@ export const DEFAULT_PAGES: UserPages = {
 export const SUPERADMIN_PAGES: UserPages = {
   chat: true,
   dashboards: 'edit',
+  dashboardTables: [],               // superadmin usa 'all' via role, não precisa listar
   monitoring: true,
   zabbix: true,
   whatsapp: true,

@@ -4,6 +4,7 @@ import { useState } from 'react'
 import type { RegistryUser } from '@/lib/user-registry'
 import type { UserPages } from '@/lib/user-pages'
 import { MessageSquare, BarChart2, Activity, Bell, Smartphone, Database, Search, Video, LogOut } from 'lucide-react'
+import { TablePermissionsModal } from './TablePermissionsModal'
 
 const SIMPLE_PAGES = [
   { key: 'chat',       label: 'Chat',      Icon: MessageSquare },
@@ -50,6 +51,7 @@ export function UserPermissionRow({ user, isSelf }: Props) {
   const [saving, setSaving] = useState<string | null>(null)
   const [loggingOut, setLoggingOut] = useState(false)
   const [loggedOut, setLoggedOut] = useState(false)
+  const [showTableModal, setShowTableModal] = useState(false)
 
   const isOnline = Date.now() - new Date(user.lastLogin).getTime() < 30 * 60 * 1000
 
@@ -126,34 +128,57 @@ export function UserPermissionRow({ user, isSelf }: Props) {
         </div>
       </td>
 
-      {/* Dashboard — 3 estados */}
-      <td className="py-4 px-3 text-center min-w-[110px]">
+      {/* Dashboard — 3 estados + botão de tabelas */}
+      <td className="py-4 px-3 text-center min-w-[130px]">
         {isSuperadmin ? (
           <span className="text-[10px] font-black text-[#8DC63F] uppercase tracking-wide">Tudo</span>
         ) : (
-          <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[9px] font-black uppercase tracking-wide">
-            {(['false', 'view', 'edit'] as const).map((val) => {
-              const active = String(pages.dashboards) === val
-              return (
-                <button
-                  key={val}
-                  disabled={saving === 'dashboards'}
-                  onClick={() => patch({ dashboards: val === 'false' ? false : val })}
-                  className={`px-2 py-1.5 transition-colors ${
-                    active
-                      ? val === 'false'
-                        ? 'bg-gray-200 text-gray-500'
-                        : val === 'view'
-                          ? 'bg-blue-500 text-white'
-                          : 'bg-[#8DC63F] text-white'
-                      : 'bg-white text-gray-300 hover:bg-gray-50'
-                  } disabled:cursor-not-allowed`}
-                >
-                  {val === 'false' ? '—' : val === 'view' ? 'VER' : 'EDI'}
-                </button>
-              )
-            })}
+          <div className="flex flex-col items-center gap-1.5">
+            <div className="inline-flex rounded-lg border border-gray-200 overflow-hidden text-[9px] font-black uppercase tracking-wide">
+              {(['false', 'view', 'edit'] as const).map((val) => {
+                const active = String(pages.dashboards) === val
+                return (
+                  <button
+                    key={val}
+                    disabled={saving === 'dashboards'}
+                    onClick={() => patch({ dashboards: val === 'false' ? false : val })}
+                    className={`px-2 py-1.5 transition-colors ${
+                      active
+                        ? val === 'false'
+                          ? 'bg-gray-200 text-gray-500'
+                          : val === 'view'
+                            ? 'bg-blue-500 text-white'
+                            : 'bg-[#8DC63F] text-white'
+                        : 'bg-white text-gray-300 hover:bg-gray-50'
+                    } disabled:cursor-not-allowed`}
+                  >
+                    {val === 'false' ? '—' : val === 'view' ? 'VER' : 'EDI'}
+                  </button>
+                )
+              })}
+            </div>
+            {pages.dashboards && (
+              <button
+                onClick={() => setShowTableModal(true)}
+                className="text-[9px] font-black uppercase tracking-wide text-[#8DC63F] hover:underline"
+              >
+                📋 {(pages.dashboardTables ?? []).length} tabela{(pages.dashboardTables ?? []).length !== 1 ? 's' : ''}
+              </button>
+            )}
           </div>
+        )}
+
+        {showTableModal && !isSuperadmin && (
+          <TablePermissionsModal
+            email={user.email}
+            userName={user.name}
+            currentTables={pages.dashboardTables ?? []}
+            onClose={() => setShowTableModal(false)}
+            onSave={(tables) => {
+              setPages(p => ({ ...p, dashboardTables: tables }))
+              setShowTableModal(false)
+            }}
+          />
         )}
       </td>
 

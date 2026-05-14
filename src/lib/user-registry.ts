@@ -84,3 +84,20 @@ export function forceLogout(email: string): boolean {
 export function getTokenVersion(email: string): number {
   return loadRegistry()[email]?.tokenVersion ?? 0
 }
+
+// Retorna 'all' para superadmin, lista de tabelas para user, [] se sem acesso
+export function getUserAllowedTables(email: string): string[] | 'all' {
+  const user = loadRegistry()[email]
+  if (!user) return []
+  if (user.role === 'superadmin') return 'all'
+  if (!user.pages.dashboards) return []
+  return user.pages.dashboardTables ?? []
+}
+
+export function updateUserTables(email: string, tables: string[]): boolean {
+  const registry = loadRegistry()
+  if (!registry[email]) return false
+  registry[email].pages.dashboardTables = tables
+  saveRegistry(registry)
+  return true
+}

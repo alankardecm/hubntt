@@ -1,5 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { smartWidgetAssistant } from '@/modules/datalake/application/smart-assistant';
+import { auth } from '@/lib/auth';
+import { getUserAllowedTables } from '@/lib/user-registry';
 
 export async function POST(request: NextRequest) {
   try {
@@ -10,7 +12,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: false, error: 'O que voce gostaria de visualizar?' }, { status: 400 });
     }
 
-    const response = await smartWidgetAssistant(prompt);
+    const session = await auth();
+    const email = session?.user?.email ?? '';
+    const allowedTables = getUserAllowedTables(email);
+
+    const response = await smartWidgetAssistant(prompt, allowedTables);
     return NextResponse.json(response);
   } catch (error) {
     return NextResponse.json(

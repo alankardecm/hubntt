@@ -17,7 +17,7 @@ type InformationSchemaColumnRow = RowDataPacket & {
   COLUMN_KEY: string;
 };
 
-export async function getDatalakeOverview(): Promise<DatalakeOverview> {
+export async function getDatalakeOverview(allowedTables?: string[] | 'all'): Promise<DatalakeOverview> {
   const config = getMysqlConfig();
 
   if (!isMysqlConfigured()) {
@@ -48,6 +48,11 @@ export async function getDatalakeOverview(): Promise<DatalakeOverview> {
 
     const tables: DatalakeTableInfo[] = rows
       .filter((row) => isTableAllowed(row.TABLE_NAME))
+      .filter((row) => {
+        if (!allowedTables || allowedTables === 'all') return true
+        if (allowedTables.length === 0) return false
+        return allowedTables.includes(row.TABLE_NAME)
+      })
       .map((row) => ({
         name: row.TABLE_NAME,
         rows: typeof row.TABLE_ROWS === 'number' ? row.TABLE_ROWS : null,

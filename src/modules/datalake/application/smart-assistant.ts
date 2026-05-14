@@ -92,8 +92,8 @@ Responda APENAS com o nome exato da tabela. Se nenhuma for relevante, responda "
   }
 }
 
-export async function smartWidgetAssistant(prompt: string): Promise<DashboardSuggestionResponse> {
-  const overview = await getDatalakeOverview();
+export async function smartWidgetAssistant(prompt: string, allowedTables?: string[] | 'all'): Promise<DashboardSuggestionResponse> {
+  const overview = await getDatalakeOverview(allowedTables);
   if (!overview.ok) {
     return { ok: false, prompt, suggestions: [], source: 'heuristic' };
   }

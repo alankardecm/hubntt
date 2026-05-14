@@ -114,7 +114,8 @@ Retomar a partir do PONTO_RECUPERACAO_HUB.md."
 
 ### Pendências abertas
 
-1. **Tela de login** — design muito intenso, suavizar; logo Netturbo ausente (aguardando arquivo PNG/SVG)
+1. **Permissão granular de tabelas no Dashboard** — hoje quem tem acesso ao Dashboard vê TODAS as tabelas do DataLake. Futuramente: definir por usuário quais tabelas ele pode consultar (ex: diretoria vê financeiro, NOC vê fato_solicitacoes, etc.)
+2. **Tela de login** — design muito intenso, suavizar; logo Netturbo ausente (aguardando arquivo PNG/SVG)
 2. **Diagnóstico (`/settings`)** — ainda usa tema escuro antigo, fora do padrão Netturbo claro
 3. **Bot WhatsApp** — ainda recebe erros 401 para mensagens antigas em cache (residuo da migração wa-bridge → Evolution API); vai sumir naturalmente com o tempo
 4. **Supabase → PostgreSQL local** — PostgreSQL já instalado no servidor; migração dos dados do Supabase não iniciada
