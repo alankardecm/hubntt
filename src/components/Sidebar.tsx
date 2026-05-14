@@ -89,7 +89,7 @@ function SidebarNav() {
 
 export default function Sidebar() {
   const { data: session } = useSession()
-  const isSuperadmin = session?.user?.role === 'superadmin'
+  const isSuperadmin = session?.user?.role === 'superadmin' || session?.user?.role === 'admin'
 
   return (
     <aside className="z-50 flex h-full w-[72px] lg:w-60 flex-shrink-0 flex-col border-r border-[#404040]/8 bg-white backdrop-blur-xl transition-all duration-300">

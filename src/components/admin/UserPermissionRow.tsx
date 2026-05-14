@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import type { RegistryUser } from '@/lib/user-registry'
 import type { UserPages } from '@/lib/user-pages'
-import { MessageSquare, BarChart2, Activity, Bell, Smartphone, Database, Search, Video, LogOut } from 'lucide-react'
+import { MessageSquare, BarChart2, Activity, Bell, Smartphone, Database, Search, Video, LogOut, ShieldCheck, ShieldOff } from 'lucide-react'
 import { TablePermissionsModal } from './TablePermissionsModal'
 
 const SIMPLE_PAGES = [
@@ -52,6 +52,8 @@ export function UserPermissionRow({ user, isSelf }: Props) {
   const [loggingOut, setLoggingOut] = useState(false)
   const [loggedOut, setLoggedOut] = useState(false)
   const [showTableModal, setShowTableModal] = useState(false)
+  const [currentRole, setCurrentRole] = useState(user.role)
+  const [changingRole, setChangingRole] = useState(false)
 
   const isOnline = Date.now() - new Date(user.lastLogin).getTime() < 30 * 60 * 1000
 
@@ -67,6 +69,24 @@ export function UserPermissionRow({ user, isSelf }: Props) {
       })
     } finally {
       setSaving(null)
+    }
+  }
+
+  async function handleRoleToggle() {
+    const newRole = currentRole === 'admin' ? 'user' : 'admin'
+    const action = newRole === 'admin' ? 'promover a Admin' : 'rebaixar para Usuário'
+    if (!confirm(`${action} ${user.name}? O usuário será deslogado automaticamente.`)) return
+    setChangingRole(true)
+    try {
+      await fetch(`/api/admin/users/${encodeURIComponent(user.email)}/role`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      setCurrentRole(newRole)
+      setLoggedOut(true) // já foi forçado logout pelo servidor
+    } finally {
+      setChangingRole(false)
     }
   }
 
@@ -108,15 +128,40 @@ export function UserPermissionRow({ user, isSelf }: Props) {
       {/* Status */}
       <td className="py-4 px-4 min-w-[110px]">
         <div className="flex flex-col gap-1">
-          {isSuperadmin ? (
-            <span className="inline-flex items-center gap-1 rounded-full bg-[#8DC63F]/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-[#7ab030]">
-              Admin
-            </span>
-          ) : (
-            <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-gray-500">
-              Usuário
-            </span>
-          )}
+          <div className="flex items-center gap-1">
+            {isSuperadmin ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-[#8DC63F]/10 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-[#7ab030]">
+                Owner
+              </span>
+            ) : currentRole === 'admin' ? (
+              <span className="inline-flex items-center gap-1 rounded-full bg-blue-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-blue-600">
+                Admin
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1 rounded-full bg-gray-100 px-2 py-0.5 text-[9px] font-black uppercase tracking-[0.12em] text-gray-500">
+                Usuário
+              </span>
+            )}
+            {!isSuperadmin && (
+              <button
+                onClick={handleRoleToggle}
+                disabled={changingRole}
+                title={currentRole === 'admin' ? 'Rebaixar para Usuário' : 'Promover a Admin'}
+                className={`h-5 w-5 flex items-center justify-center rounded-md transition-all ${
+                  currentRole === 'admin'
+                    ? 'text-blue-400 hover:bg-red-50 hover:text-red-400'
+                    : 'text-gray-300 hover:bg-blue-50 hover:text-blue-500'
+                } disabled:opacity-40`}
+              >
+                {changingRole
+                  ? <span className="h-2.5 w-2.5 rounded-full border border-current border-t-transparent animate-spin" />
+                  : currentRole === 'admin'
+                    ? <ShieldOff className="h-3 w-3" strokeWidth={2} />
+                    : <ShieldCheck className="h-3 w-3" strokeWidth={2} />
+                }
+              </button>
+            )}
+          </div>
           <div className="flex items-center gap-1">
             <span
               className={`h-1.5 w-1.5 rounded-full flex-shrink-0 ${isOnline ? 'bg-[#8DC63F] animate-pulse' : 'bg-gray-300'}`}

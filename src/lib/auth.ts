@@ -3,7 +3,7 @@
 
 import NextAuth from "next-auth"
 import { authConfig } from "@/lib/auth.config"
-import { registerLogin, getUserPages, getTokenVersion } from "@/lib/user-registry"
+import { registerLogin, getUserPages, getTokenVersion, getRegistryUser } from "@/lib/user-registry"
 import type { UserPages } from "@/lib/user-pages"
 
 const SUPERADMIN_EMAILS = ["alan.moreira@netturbo.com.br"]
@@ -32,17 +32,23 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
 
     jwt({ token, account }) {
       const email = token.email ?? ''
-      token.role = SUPERADMIN_EMAILS.includes(email) ? 'superadmin' : 'user'
+      const isOwner = SUPERADMIN_EMAILS.includes(email)
 
       if (account && email) {
-        // Login inicial — carrega permissões e versão do registro
+        // Login inicial — lê role e permissões do registro
+        const user = getRegistryUser(email)
+        token.role = isOwner ? 'superadmin' : (user?.role === 'admin' ? 'admin' : 'user')
         token.pages = getUserPages(email)
         token.tokenVersion = getTokenVersion(email)
       } else if (email && token.tokenVersion !== -1) {
-        // Refresh do token — verifica se force logout foi acionado
+        // Refresh — mantém role atual mas verifica force logout
+        if (!isOwner) {
+          const user = getRegistryUser(email)
+          token.role = user?.role === 'admin' ? 'admin' : 'user'
+        }
         const current = getTokenVersion(email)
         if (current > (token.tokenVersion as number ?? 0)) {
-          token.tokenVersion = -1 // marca token como inválido
+          token.tokenVersion = -1
         }
       }
 

@@ -39,7 +39,7 @@ export const authConfig: NextAuthConfig = {
         return NextResponse.redirect(new URL('/auth/signin', request.url))
       }
 
-      if (session.user.role === 'superadmin') return true
+      if (session.user.role === 'superadmin' || session.user.role === 'admin') return true
 
       const pages = (session.user.pages as UserPages) ?? DEFAULT_PAGES
       if (!checkPagePermission(pathname, pages)) {

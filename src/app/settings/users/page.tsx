@@ -8,7 +8,7 @@ import { Users, ShieldCheck, Wifi, Lock, BarChart2, MessageSquare, Activity, Bel
 export default async function UsersPage() {
   const session = await auth()
   if (!session) redirect('/auth/signin')
-  if (session.user.role !== 'superadmin') redirect('/access-denied')
+  if (session.user.role !== 'superadmin' && session.user.role !== 'admin') redirect('/access-denied')
 
   const registry = loadRegistry()
   const users = Object.values(registry).sort((a, b) => {

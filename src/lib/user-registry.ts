@@ -9,7 +9,7 @@ export interface RegistryUser {
   name: string
   email: string
   picture?: string
-  role: 'superadmin' | 'user'
+  role: 'superadmin' | 'admin' | 'user'
   firstLogin: string
   lastLogin: string
   pages: UserPages
@@ -85,13 +85,30 @@ export function getTokenVersion(email: string): number {
   return loadRegistry()[email]?.tokenVersion ?? 0
 }
 
-// Retorna 'all' para superadmin, lista de tabelas para user, [] se sem acesso
+// Retorna 'all' para superadmin/admin, lista de tabelas para user, [] se sem acesso
 export function getUserAllowedTables(email: string): string[] | 'all' {
   const user = loadRegistry()[email]
   if (!user) return []
-  if (user.role === 'superadmin') return 'all'
+  if (user.role === 'superadmin' || user.role === 'admin') return 'all'
   if (!user.pages.dashboards) return []
   return user.pages.dashboardTables ?? []
+}
+
+export function setUserRole(email: string, role: 'admin' | 'user'): boolean {
+  const registry = loadRegistry()
+  if (!registry[email]) return false
+  if (registry[email].role === 'superadmin') return false // superadmin não pode ser alterado
+  registry[email].role = role
+  // Admin ganha acesso total; user mantém suas permissões atuais
+  if (role === 'admin') {
+    registry[email].pages = SUPERADMIN_PAGES
+  }
+  saveRegistry(registry)
+  return true
+}
+
+export function getRegistryUser(email: string): RegistryUser | null {
+  return loadRegistry()[email] ?? null
 }
 
 export function updateUserTables(email: string, tables: string[]): boolean {
