@@ -8,6 +8,9 @@ import type { UserPages } from "@/lib/user-pages"
 
 const SUPERADMIN_EMAILS = ["alan.moreira@netturbo.com.br"]
 
+// Contas bloqueadas — não conseguem logar no Hub
+const BLOCKED_EMAILS = ["ntt.alertas@netturbo.com.br"]
+
 export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   callbacks: {
@@ -16,6 +19,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
     async signIn({ user }) {
       const email = user.email ?? ''
       if (!email) return false
+      if (BLOCKED_EMAILS.includes(email)) return false
       const isSuperadmin = SUPERADMIN_EMAILS.includes(email)
       registerLogin({
         email,
