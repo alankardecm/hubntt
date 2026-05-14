@@ -19,7 +19,7 @@ export const DEFAULT_PAGES: UserPages = {
   whatsapp: false,
   datalake: false,
   rag: false,
-  netmeet: false,
+  netmeet: true,
 }
 
 export const SUPERADMIN_PAGES: UserPages = {
