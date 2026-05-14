@@ -1,6 +1,7 @@
 import { signIn } from "@/lib/auth"
 import { redirect } from "next/navigation"
 import { auth } from "@/lib/auth"
+import Image from "next/image"
 
 export default async function SignInPage() {
   const session = await auth()
@@ -58,38 +59,19 @@ export default async function SignInPage() {
           >
 
             {/* Logo */}
-            <div className="flex items-center gap-3">
-              <div
-                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
-                style={{
-                  backgroundColor: "#000D00",
-                  border: "1px solid #749202",
-                  boxShadow: "0 0 12px rgba(172,208,0,0.2), inset 0 0 12px rgba(172,208,0,0.05)",
-                }}
-              >
-                <div
-                  className="h-3.5 w-3.5 rounded-full"
-                  style={{
-                    backgroundColor: "#ACD000",
-                    boxShadow: "0 0 8px #ACD000, 0 0 20px rgba(172,208,0,0.5)",
-                  }}
-                />
-              </div>
-              <div>
-                <p
-                  className="text-[11px] font-black uppercase tracking-[0.3em]"
-                  style={{ color: "#ACD000", textShadow: "0 0 10px rgba(172,208,0,0.5)" }}
-                >
-                  Netturbo
-                </p>
-                <p className="text-[9px] font-bold uppercase tracking-[0.18em]" style={{ color: "#749202" }}>
-                  Hub Operacional
-                </p>
-              </div>
+            <div className="flex items-center justify-between">
+              <Image
+                src="/logo-netturbo.png"
+                alt="Netturbo"
+                width={140}
+                height={48}
+                priority
+                style={{ filter: "drop-shadow(0 0 8px rgba(172,208,0,0.25))" }}
+              />
 
               {/* Status pill */}
               <div
-                className="ml-auto flex items-center gap-1.5 rounded-full px-2.5 py-1"
+                className="flex items-center gap-1.5 rounded-full px-2.5 py-1"
                 style={{ backgroundColor: "#000D00", border: "1px solid #365003" }}
               >
                 <span

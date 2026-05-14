@@ -4,7 +4,30 @@ Este arquivo serve como checkpoint oficial para retomada rapida do HUB na proxim
 
 ---
 
-## PONTO DE RECUPERACAO ATUAL (13/05/2026 — 22h — fim de sessao)
+## PONTO DE RECUPERACAO ATUAL (14/05/2026 — sessao autenticação Azure AD)
+
+### Resumo da sessao de hoje (para retomada rapida)
+
+**O que foi feito:**
+1. **Autenticação Azure AD implementada e funcionando em produção** — NextAuth v5 com Microsoft Entra ID. App Registration: `HUB Netturbo` (client ID `3264f7ab-5836-4403-8d6a-c9ae078366fb`), tenant `945bd206-3f96-49d3-903f-06bd1f80c935`
+2. **Nginx configurado com HTTPS** — certificado autoassinado, redireciona porta 80→443, proxy para localhost:4200. HUB acessível em `https://10.250.110.238`
+3. **Tela de login tema cyber green** — fundo `#000D00`, texto neon `#ACD000`, grade cyberpunk + scanlines. Funcional mas design a ajustar.
+4. **alan.moreira@netturbo.com.br = superadmin** — role atribuída automaticamente no token JWT
+5. **Botão Sair** na Sidebar conectado ao signOut do NextAuth
+
+**Último commit:** `4a24943` (master)
+
+**Próximo passo prioritário:** Ajustar intensidade visual da tela de login + adicionar logo Netturbo (aguardando arquivo de imagem do usuário)
+
+**Regra de trabalho:** sempre fazer backup antes de editar arquivos; git push so com autorizacao explicita do usuario.
+
+### Pendências tela de login
+- Design muito intenso — suavizar saturação e luzes
+- Logo Netturbo ausente — aguardando arquivo PNG/SVG
+
+---
+
+## PONTO DE RECUPERACAO ANTERIOR (13/05/2026 — 22h — fim de sessao)
 
 ### Resumo da sessao de hoje (para retomada rapida)
 
@@ -91,12 +114,13 @@ Retomar a partir do PONTO_RECUPERACAO_HUB.md."
 
 ### Pendências abertas
 
-1. **Diagnóstico (`/settings`)** — ainda usa tema escuro antigo, fora do padrão Netturbo claro
-2. **Bot WhatsApp** — ainda recebe erros 401 para mensagens antigas em cache (residuo da migração wa-bridge → Evolution API); vai sumir naturalmente com o tempo
-3. **Autenticação** — planejada via Active Directory (Azure AD / LDAP); não iniciada
+1. **Tela de login** — design muito intenso, suavizar; logo Netturbo ausente (aguardando arquivo PNG/SVG)
+2. **Diagnóstico (`/settings`)** — ainda usa tema escuro antigo, fora do padrão Netturbo claro
+3. **Bot WhatsApp** — ainda recebe erros 401 para mensagens antigas em cache (residuo da migração wa-bridge → Evolution API); vai sumir naturalmente com o tempo
 4. **Supabase → PostgreSQL local** — PostgreSQL já instalado no servidor; migração dos dados do Supabase não iniciada
 5. **Alertas proativos Zabbix** — bot enviar mensagem automática ao detectar alarme DISASTER
-6. **NetMeet via WhatsApp** — ✅ implementado e testado em produção (13/05/2026) — áudio → Whisper → GPT → ata no WhatsApp funcionando
+6. **Autenticação** — ✅ Azure AD implementado e funcionando em produção (14/05/2026)
+7. **NetMeet via WhatsApp** — ✅ implementado e testado em produção (13/05/2026) — áudio → Whisper → GPT → ata no WhatsApp funcionando
 
 ### Variáveis de ambiente no servidor (`/opt/DESENVOLVIMENTO_E_TESTE/hubntt/.env`)
 
