@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import Sidebar from '@/components/Sidebar';
 import { useEffect, useState } from 'react';
+import { useSession } from 'next-auth/react';
 import {
   Activity, Bell, Bot, CheckCircle2,
   Database, MessageSquare, Settings,
@@ -50,6 +51,8 @@ function StatusBadge({ status }: { status: HealthStatus }) {
 }
 
 export default function HubHomePage() {
+  const { data: session } = useSession()
+  const firstName = session?.user?.name?.split(' ')[0] ?? 'Netturbo'
   const [health, setHealth] = useState<HealthStatus>('loading');
   const [services, setServices] = useState<ServiceHealth[]>([]);
   const [healthy, setHealthy] = useState(0);
@@ -102,7 +105,7 @@ export default function HubHomePage() {
                 </div>
                 <h1 className="text-4xl font-[1000] tracking-[-0.05em] text-[#404040] lg:text-5xl">
                   {greeting},<br />
-                  <span className="text-[#8DC63F]">Netturbo.</span>
+                  <span className="text-[#8DC63F]">{firstName}.</span>
                 </h1>
                 <p className="mt-3 text-sm text-gray-400 leading-relaxed max-w-md">
                   Central operacional da empresa. Acesse monitoramento, comunicação, dados e IA em um só lugar.
