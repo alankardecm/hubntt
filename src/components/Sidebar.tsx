@@ -8,7 +8,7 @@ import {
   Home, Grid, MessageSquare,
   Settings, Users, Video,
   Activity, Database, Bell, BarChart2,
-  Bot, TriangleAlert, Smartphone
+  Bot, TriangleAlert, Smartphone, TrendingUp
 } from 'lucide-react';
 import { SignOutButton } from '@/components/SignOutButton';
 
@@ -16,6 +16,7 @@ const NAV_ITEMS = [
   { icon: Home,          href: '/',                        label: 'Hub' },
   { icon: Grid,          href: '/dashboard',               label: 'Workspace' },
   { icon: BarChart2,     href: '/dashboards',              label: 'Dashboard' },
+  { icon: TrendingUp,    href: '/dashboard/protocolos',    label: 'Protocolos' },
   { icon: Activity,      href: '/dashboard/noc',           label: 'Monitoramento' },
   { icon: Bell,          href: '/monitoring/zabbix',       label: 'Zabbix' },
   { icon: Bot,           href: '/dashboard/comunicacao',   label: 'IA Comunicação' },
