@@ -4,7 +4,77 @@ Este arquivo serve como checkpoint oficial para retomada rapida do HUB na proxim
 
 ---
 
-## PONTO DE RECUPERACAO ATUAL (14/05/2026 — sessao bot WhatsApp)
+## PONTO DE RECUPERACAO ATUAL (15/05/2026 — sessao Dashboard Protocolos + Smart Assistant)
+
+### Resumo da sessao de hoje (para retomada rapida)
+
+**O que foi feito:**
+1. **Dashboard Protocolos Semanais** — nova página `/dashboard/protocolos` com 4 cards lado a lado, um por semana (Dom→Sáb), gráfico de barras recharts. Semana atual em verde Netturbo, anteriores em cinza. Anomalia detectada quando dia atual >20% acima da média das semanas anteriores (barra vermelha + banner de alerta). Filtro dinâmico por equipe carregado do DataLake.
+2. **API weekly-protocols** — `GET /api/datalake/weekly-protocols?equipe=NOC+N1-+Suporte`. Consulta `fato_solicitacoes` agrupado por `YEARWEEK ISO × DAYOFWEEK`, últimas 4 semanas. Retorna semanas, lista de equipes e flags de anomalia.
+3. **Sidebar** — adicionado item "Protocolos" com ícone TrendingUp apontando para `/dashboard/protocolos`.
+4. **Fix Smart Assistant (dashboard-suggestions.ts)** — o assistente mapeava "contratos" para `fato_contratos` (errado). Corrigido para `crm_funter`. Adicionado schema real: `estagio Normal=ativo, status Aprovado=aprovado`. Exemplos críticos adicionados.
+5. **Fix Smart Assistant (smart-assistant.ts)** — mesmo correção para o assistente do DataLake Explorer.
+6. **Mapeamento de equipes do DataLake** — confirmado que a equipe NOC N1 se chama exatamente `'NOC N1- Suporte'` (25.475 registros). O filtro do dropdown carrega automaticamente os valores reais.
+7. **Documento CFO** — criado `HUB_Netturbo_Custo_150_usuarios.docx` em `15 - PROJETO IA NETTURBO/`. One-pager executivo com custo total estimado de R$590/mês (R$4,00/usuário) e otimizações que reduzem para R$250/mês.
+
+**Commits desta sessão:**
+- `27a8cf7` — feat: dashboard de protocolos semanais com detecção de anomalia
+- `46e6a04` — refactor: protocolos semanais com cards de barras Dom-Sab
+- `bb136f3` — fix: smart assistant mapeamento crm_funter e estagio Normal=ativo
+- `e66f78a` — fix: dashboard-suggestions mapeamento correto crm_funter e estagio
+
+**Último commit no GitHub:** `e66f78a` — **pendente de deploy no servidor**
+
+**Próximo passo prioritário:** Deploy no servidor + testar smart assistant com "contratos aprovados em 2025 por mês"
+
+**Regra de trabalho:** sempre fazer backup antes de editar arquivos; git push só com autorização explícita do usuário.
+
+### Arquivos modificados nesta sessão
+
+```
+src/app/api/datalake/weekly-protocols/route.ts   — NOVO: API protocolos semanais
+src/app/dashboard/protocolos/page.tsx             — NOVO: página com 4 cards de barras
+src/components/Sidebar.tsx                        — item Protocolos adicionado
+src/modules/datalake/application/smart-assistant.ts      — fix mapeamento crm_funter
+src/modules/datalake/application/dashboard-suggestions.ts — fix mapeamento crm_funter
+PONTO_RECUPERACAO_HUB.md                          — este arquivo
+```
+
+### Schema crm_funter (confirmado hoje)
+
+```
+Colunas principais: contrato, cliente, cod_cliente, vendedor_1, valor (decimal),
+  estagio, status, tipo, dt_cadastro (datetime), dt_termino, cidade, estado, produto
+
+Valores reais de estagio: 'Normal' (1906) = ATIVO, 'Cancelado' (364), 'Cortesia' (98)
+Valores reais de status:  'Aprovado', 'Cancelado', 'Em Aprovacao', 'Pre-Contrato'
+
+IMPORTANTE: NÃO existe valor 'Ativo' em estagio — usar 'Normal'
+Data de referência: dt_cadastro (dados existentes são de 2025, não 2026)
+```
+
+### Equipes fato_solicitacoes (top 5 confirmadas hoje)
+
+```
+'NOC N1- Suporte'     — 25.475 registros (principal)
+'Manutenção - O&M'    — 4.738
+'Faturamento'         — 4.679
+'Relacionamento'      — 4.489
+'NOC Interno'         — 3.771
+```
+
+### Deploy pendente no servidor
+
+```bash
+sudo su
+cd /opt/DESENVOLVIMENTO_E_TESTE/hubntt
+pm2 stop hub-ntt-73 && git pull origin master && npm run build && pm2 start hub-ntt-73
+pm2 save
+```
+
+---
+
+## PONTO DE RECUPERACAO ANTERIOR (14/05/2026 — sessao bot WhatsApp)
 
 ### Resumo da sessao de hoje (para retomada rapida)
 
