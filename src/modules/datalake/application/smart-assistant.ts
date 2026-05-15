@@ -68,13 +68,13 @@ Tabelas disponiveis: ${tableNames}
 Mapeamento OBRIGATORIO de termos de negocio (prioridade maxima):
 - "protocolo", "protocolos", "chamado", "chamados", "solicitacao", "solicitacoes", "atendimento", "atendimentos" → fato_solicitacoes
 - "por equipe", "classificar por equipe", "equipe de atendimento", "atendente", "fila de atendimento", "sla" → fato_solicitacoes
-- "contratos ativos", "contratos cancelados", "contratos aprovados", "quantos contratos", "numero de contratos", "contratos por mes" → crm_Funter
+- "contratos", "contratos ativos", "contratos cancelados", "contratos aprovados", "quantos contratos", "numero de contratos", "contratos por mes", "contratos em", "contrato" → crm_funter
 - "valor dos contratos", "receita total", "soma de valor", "faturamento" → fato_contratos
-- crm_Funter: UMA linha por contrato. Data = dt_cadastro. Status = estagio. Nome cliente = cliente.
+- crm_funter: UMA linha por contrato. Data de cadastro = dt_cadastro. Status/estagio = estagio (valores: Normal=ativo, Cancelado, Cortesia). Nome cliente = cliente. Vendedor = vendedor_1.
 - fato_solicitacoes: UMA linha por protocolo/solicitacao. Data abertura = data_abertura. Equipe = equipe. Atendente = atendente.
 - fato_contratos: UMA linha por EVENTO financeiro. Use SOMENTE para somar valor_total.
 
-Responda APENAS com o nome exato da tabela. Se nenhuma for relevante, responda "none".`
+Responda APENAS com o nome exato da tabela como aparece na lista. Se nenhuma for relevante, responda "none".`
         },
         {
           role: 'user',
@@ -129,7 +129,9 @@ ${samplesText || '  (nenhum disponivel)'}
 MAPEAMENTO DE TERMOS DE NEGOCIO:
 - Tabela fato_solicitacoes: "protocolo", "protocolos", "chamado", "chamados", "solicitacao" sao o mesmo conceito. COUNT(*) = quantidade de protocolos. Coluna de data de abertura = data_abertura. Coluna de equipe = equipe. Coluna de atendente = atendente.
 - Tabela fato_solicitacoes: "abertos em X" = filtrar por data_abertura no periodo X. NUNCA filtrar por status para "abertos em periodo".
-- Tabela crm_Funter: cada linha e um contrato. "cliente" = nome, "estagio" = status, "dt_cadastro" = data, "valor" = valor do contrato.
+- Tabela crm_funter: cada linha e UM contrato unico. Colunas principais: cliente (nome), estagio (status), dt_cadastro (data de cadastro), valor (valor mensal), vendedor_1 (vendedor), cidade, produto, tipo.
+- Tabela crm_funter - VALORES REAIS de estagio: "Normal" = contrato ATIVO/vigente, "Cancelado" = cancelado, "Cortesia" = cortesia. NAO existe valor "Ativo" — use "Normal" para filtrar ativos.
+- Tabela crm_funter - PERIODO: dt_cadastro e a data de cadastro do contrato. Para "contratos ativos em 2025" = filtrar dt_cadastro entre 2025-01-01 e 2025-12-31. Para "contratos ativos" sem periodo = sem filtro de data, apenas estagio = "Normal".
 - Tabela fato_contratos: use APENAS para metricas financeiras (soma de valor_total). NUNCA para contar contratos.
 
 REGRAS DE AGRUPAMENTO TEMPORAL (timeBucket) - OBRIGATORIO quando usuario pede "por mes", "mensal", etc:
