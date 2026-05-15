@@ -5,11 +5,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
 import { AlertTriangle, RefreshCw, TrendingUp } from 'lucide-react';
 import {
+  Bar,
+  BarChart,
   CartesianGrid,
-  DotProps,
-  Legend,
-  Line,
-  LineChart,
+  Cell,
   ResponsiveContainer,
   Tooltip,
   XAxis,
@@ -19,102 +18,149 @@ import type { WeekData, WeeklyProtocolsResponse } from '@/app/api/datalake/weekl
 
 // ── Constantes ─────────────────────────────────────────────────────────────────
 
-const DAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const;
-
-// Paleta: semana mais antiga → mais recente (atual = verde Netturbo)
-const WEEK_COLORS = ['#a8a29e', '#78716c', '#57534e', '#8DC63F'];
+// Dom → Sáb (ordem natural da semana)
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const;
 
 // ── Tipos ──────────────────────────────────────────────────────────────────────
 
-type ChartPoint = {
-  day: string;
-  [weekKey: string]: string | number | undefined;
-};
+type ChartPoint = { day: string; total: number; anomaly: boolean };
 
 // ── Helpers ────────────────────────────────────────────────────────────────────
 
-function buildChartData(weeks: WeekData[]): ChartPoint[] {
-  return DAY_LABELS.map((day) => {
-    const point: ChartPoint = { day };
-    for (const week of weeks) {
-      point[week.weekKey] = week.days[day as keyof typeof week.days];
-    }
-    return point;
-  });
-}
-
-// ── Dot com destaque de anomalia ───────────────────────────────────────────────
-
-type AnomalyDotProps = DotProps & {
-  payload?: ChartPoint;
-  isCurrent: boolean;
-  anomalies: Record<string, boolean>;
-  color: string;
-};
-
-function AnomalyDot(props: AnomalyDotProps) {
-  const { cx, cy, payload, isCurrent, anomalies, color } = props;
-  if (cx === undefined || cy === undefined || !payload) return null;
-
-  const isAnomaly = isCurrent && anomalies[payload.day];
-
-  if (isAnomaly) {
-    return (
-      <g>
-        <circle cx={cx} cy={cy} r={7} fill="#ef4444" stroke="#fff" strokeWidth={2} />
-        <circle cx={cx} cy={cy} r={3} fill="#fff" />
-      </g>
-    );
-  }
-
-  return <circle cx={cx} cy={cy} r={3} fill={color} stroke="#fff" strokeWidth={1.5} />;
+function buildWeekPoints(week: WeekData, anomalies: Record<string, boolean>, isCurrent: boolean): ChartPoint[] {
+  return DAY_LABELS.map((day) => ({
+    day,
+    total: week.days[day as keyof typeof week.days] ?? 0,
+    anomaly: isCurrent && !!anomalies[day],
+  }));
 }
 
 // ── Tooltip customizado ────────────────────────────────────────────────────────
 
-type CustomTooltipProps = {
+type TooltipProps = {
   active?: boolean;
   label?: string;
-  payload?: Array<{ name: string; value: number; color: string; dataKey: string }>;
-  weeks: WeekData[];
+  payload?: Array<{ value: number }>;
   anomalies: Record<string, boolean>;
+  isCurrent: boolean;
 };
 
-function CustomTooltip({ active, label, payload, weeks, anomalies }: CustomTooltipProps) {
+function WeekTooltip({ active, label, payload, anomalies, isCurrent }: TooltipProps) {
   if (!active || !payload?.length || !label) return null;
-
-  const isAnomalyDay = anomalies[label];
-  const currentWeek = weeks.find((w) => w.isCurrent);
+  const val = payload[0].value;
+  const isAnomaly = isCurrent && anomalies[label];
 
   return (
-    <div className="rounded-xl border border-stone-200 bg-white p-3 shadow-lg text-xs">
-      <p className="font-bold text-stone-700 mb-2">
-        {label}
-        {isAnomalyDay && (
-          <span className="ml-2 text-red-500 font-semibold">↑ Anomalia</span>
-        )}
+    <div className="rounded-lg border border-stone-200 bg-white px-3 py-2 shadow-lg text-xs">
+      <p className="font-bold text-stone-700">{label}</p>
+      <p className="text-stone-500 mt-0.5">
+        {val} protocolo{val !== 1 ? 's' : ''}
       </p>
-      {payload.map((entry) => {
-        const week = weeks.find((w) => w.weekKey === entry.dataKey);
-        return (
-          <div key={entry.dataKey} className="flex items-center gap-2 py-0.5">
-            <span
-              className="inline-block h-2 w-2 rounded-full flex-shrink-0"
-              style={{ background: entry.color }}
-            />
-            <span className="text-stone-500">{week?.label ?? entry.name}</span>
-            <span className="ml-auto font-semibold text-stone-800">
-              {entry.value ?? '—'}
-            </span>
-          </div>
-        );
-      })}
-      {isAnomalyDay && currentWeek && (
-        <p className="mt-2 pt-2 border-t border-stone-100 text-red-500">
-          Volume +20% acima da média das semanas anteriores
-        </p>
+      {isAnomaly && (
+        <p className="text-red-500 font-semibold mt-1">↑ +20% acima da média</p>
       )}
     </div>
+  );
+}
+
+// ── Card de semana ─────────────────────────────────────────────────────────────
+
+type WeekCardProps = {
+  week: WeekData;
+  anomalies: Record<string, boolean>;
+  index: number;
+};
+
+function WeekCard({ week, anomalies, index }: WeekCardProps) {
+  const points = buildWeekPoints(week, anomalies, week.isCurrent);
+  const total = points.reduce((s, p) => s + p.total, 0);
+  const hasAnomaly = week.isCurrent && points.some((p) => p.anomaly);
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 16 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ duration: 0.3, delay: index * 0.07 }}
+      className={`rounded-2xl border bg-white shadow-sm overflow-hidden ${
+        week.isCurrent
+          ? 'border-[#8DC63F]/40 ring-1 ring-[#8DC63F]/20'
+          : 'border-stone-200'
+      }`}
+    >
+      {/* Cabeçalho do card */}
+      <div className={`flex items-center justify-between px-5 py-3 border-b ${
+        week.isCurrent ? 'border-[#8DC63F]/20 bg-[#8DC63F]/5' : 'border-stone-100 bg-stone-50'
+      }`}>
+        <div>
+          <p className={`text-[11px] font-bold uppercase tracking-widest ${
+            week.isCurrent ? 'text-[#8DC63F]' : 'text-stone-500'
+          }`}>
+            {week.label}
+            {week.isCurrent && <span className="ml-2 normal-case tracking-normal font-semibold">(atual)</span>}
+          </p>
+          <p className="text-xs text-stone-400 mt-0.5">
+            {total} protocolo{total !== 1 ? 's' : ''} no período
+          </p>
+        </div>
+        {hasAnomaly && (
+          <div className="flex items-center gap-1.5 rounded-full bg-red-50 border border-red-100 px-2.5 py-1 text-[11px] font-semibold text-red-500">
+            <AlertTriangle className="h-3 w-3" />
+            Anomalia
+          </div>
+        )}
+      </div>
+
+      {/* Gráfico de barras */}
+      <div className="px-3 pt-4 pb-3">
+        {total === 0 ? (
+          <div className="flex h-36 items-center justify-center text-xs text-stone-300">
+            sem dados
+          </div>
+        ) : (
+          <ResponsiveContainer width="100%" height={160}>
+            <BarChart data={points} margin={{ top: 4, right: 4, left: -24, bottom: 0 }} barSize={28}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f5f5f4" vertical={false} />
+              <XAxis
+                dataKey="day"
+                tick={{ fontSize: 11, fill: '#a8a29e' }}
+                axisLine={false}
+                tickLine={false}
+              />
+              <YAxis
+                tick={{ fontSize: 10, fill: '#d6d3d1' }}
+                axisLine={false}
+                tickLine={false}
+                allowDecimals={false}
+              />
+              <Tooltip
+                content={
+                  <WeekTooltip
+                    anomalies={anomalies}
+                    isCurrent={week.isCurrent}
+                  />
+                }
+                cursor={{ fill: '#f5f5f4' }}
+              />
+              <Bar dataKey="total" radius={[4, 4, 0, 0]}>
+                {points.map((p) => (
+                  <Cell
+                    key={p.day}
+                    fill={
+                      p.anomaly
+                        ? '#ef4444'
+                        : week.isCurrent
+                        ? '#8DC63F'
+                        : '#d6d3d1'
+                    }
+                    fillOpacity={week.isCurrent ? 1 : 0.7}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
+          </ResponsiveContainer>
+        )}
+      </div>
+    </motion.div>
   );
 }
 
@@ -155,11 +201,10 @@ export default function ProtocolosSemanalPage() {
     fetchData(equipe);
   }, [fetchData, equipe]);
 
-  const chartData = buildChartData(weeks);
-  const anomalyDays = Object.entries(anomalies)
-    .filter(([, v]) => v)
-    .map(([k]) => k);
-  const currentWeek = weeks.find((w) => w.isCurrent);
+  const anomalyDays = Object.entries(anomalies).filter(([, v]) => v).map(([k]) => k);
+
+  // Exibe semanas da mais recente para a mais antiga
+  const weeksDesc = [...weeks].reverse();
 
   return (
     <div className="flex h-screen bg-stone-50">
@@ -177,13 +222,12 @@ export default function ProtocolosSemanalPage() {
                 Protocolos Semanais
               </h1>
               <p className="text-[11px] text-stone-400">
-                Comparativo das últimas 4 semanas · anomalia &gt;20% acima da média
+                Últimas 4 semanas · Dom → Sáb · anomalia &gt;20% acima da média
               </p>
             </div>
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Filtro de equipe */}
             <select
               className="rounded-lg border border-stone-200 bg-white px-3 py-1.5 text-xs font-medium text-stone-700 shadow-sm focus:outline-none focus:ring-2 focus:ring-[#8DC63F]/40"
               value={equipe}
@@ -209,7 +253,7 @@ export default function ProtocolosSemanalPage() {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
 
-          {/* Anomalia banner */}
+          {/* Banner de anomalia */}
           {anomalyDays.length > 0 && (
             <motion.div
               initial={{ opacity: 0, y: -8 }}
@@ -219,191 +263,47 @@ export default function ProtocolosSemanalPage() {
               <AlertTriangle className="h-4 w-4 text-red-500 flex-shrink-0 mt-0.5" />
               <div>
                 <p className="text-xs font-semibold text-red-700">
-                  Volume anômalo detectado na semana atual
+                  Volume anômalo na semana atual
                 </p>
                 <p className="text-xs text-red-500 mt-0.5">
-                  Dias com +20% acima da média:{' '}
+                  Dias com +20% acima da média das semanas anteriores:{' '}
                   <strong>{anomalyDays.join(', ')}</strong>
-                  {currentWeek && (
-                    <> — {currentWeek.label}</>
-                  )}
                 </p>
               </div>
             </motion.div>
           )}
 
-          {/* Gráfico */}
-          <motion.div
-            initial={{ opacity: 0, y: 12 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3 }}
-            className="rounded-2xl border border-stone-200 bg-white p-5 shadow-sm"
-          >
-            <div className="mb-4 flex items-center justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-widest text-stone-500">
-                  Protocolos abertos por dia da semana
-                </p>
-                {equipe && (
-                  <p className="text-[11px] text-stone-400 mt-0.5">
-                    Equipe: <span className="font-semibold text-stone-600">{equipe}</span>
-                  </p>
-                )}
-              </div>
-              {/* Legenda de anomalia */}
-              <div className="flex items-center gap-1.5 text-[11px] text-stone-400">
-                <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-red-500">
-                  <span className="h-1.5 w-1.5 rounded-full bg-white" />
-                </span>
-                ponto anômalo
-              </div>
+          {/* Estado de carregamento / erro */}
+          {loading && (
+            <div className="flex h-48 items-center justify-center">
+              <RefreshCw className="h-6 w-6 animate-spin text-stone-300" />
             </div>
+          )}
 
-            {error ? (
-              <div className="flex h-64 items-center justify-center text-sm text-red-500">
-                {error}
-              </div>
-            ) : loading ? (
-              <div className="flex h-64 items-center justify-center">
-                <RefreshCw className="h-6 w-6 animate-spin text-stone-300" />
-              </div>
-            ) : weeks.length === 0 ? (
-              <div className="flex h-64 items-center justify-center text-sm text-stone-400">
-                Nenhum dado encontrado para o período.
-              </div>
-            ) : (
-              <ResponsiveContainer width="100%" height={340}>
-                <LineChart data={chartData} margin={{ top: 8, right: 16, left: 0, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                  <XAxis
-                    dataKey="day"
-                    tick={{ fontSize: 11, fill: '#78716c' }}
-                    axisLine={false}
-                    tickLine={false}
-                  />
-                  <YAxis
-                    tick={{ fontSize: 11, fill: '#78716c' }}
-                    axisLine={false}
-                    tickLine={false}
-                    width={32}
-                  />
-                  <Tooltip
-                    content={
-                      <CustomTooltip
-                        weeks={weeks}
-                        anomalies={anomalies}
-                      />
-                    }
-                  />
-                  <Legend
-                    formatter={(value) => {
-                      const week = weeks.find((w) => w.weekKey === value);
-                      return (
-                        <span className="text-[11px] text-stone-600">
-                          {week?.label ?? value}
-                          {week?.isCurrent ? ' (atual)' : ''}
-                        </span>
-                      );
-                    }}
-                  />
-                  {weeks.map((week, idx) => {
-                    const color = WEEK_COLORS[Math.min(idx, WEEK_COLORS.length - 1)];
-                    return (
-                      <Line
-                        key={week.weekKey}
-                        type="monotone"
-                        dataKey={week.weekKey}
-                        name={week.weekKey}
-                        stroke={color}
-                        strokeWidth={week.isCurrent ? 2.5 : 1.5}
-                        strokeDasharray={week.isCurrent ? undefined : '4 3'}
-                        connectNulls
-                        dot={(dotProps) => (
-                          <AnomalyDot
-                            {...dotProps}
-                            isCurrent={week.isCurrent}
-                            anomalies={anomalies}
-                            color={color}
-                          />
-                        )}
-                        activeDot={{ r: 5, stroke: '#fff', strokeWidth: 2 }}
-                      />
-                    );
-                  })}
-                </LineChart>
-              </ResponsiveContainer>
-            )}
-          </motion.div>
+          {!loading && error && (
+            <div className="flex h-48 items-center justify-center text-sm text-red-500">
+              {error}
+            </div>
+          )}
 
-          {/* Tabela resumo */}
-          {!loading && !error && weeks.length > 0 && (
-            <motion.div
-              initial={{ opacity: 0, y: 12 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: 0.1 }}
-              className="rounded-2xl border border-stone-200 bg-white shadow-sm overflow-hidden"
-            >
-              <div className="px-5 py-3 border-b border-stone-100">
-                <p className="text-xs font-bold uppercase tracking-widest text-stone-500">
-                  Detalhamento por dia
-                </p>
-              </div>
-              <div className="overflow-x-auto">
-                <table className="w-full text-xs">
-                  <thead>
-                    <tr className="bg-stone-50 text-stone-500">
-                      <th className="px-4 py-2.5 text-left font-semibold uppercase tracking-wider">Dia</th>
-                      {weeks.map((week) => (
-                        <th
-                          key={week.weekKey}
-                          className={`px-4 py-2.5 text-right font-semibold uppercase tracking-wider ${
-                            week.isCurrent ? 'text-[#8DC63F]' : ''
-                          }`}
-                        >
-                          {week.label}
-                          {week.isCurrent && <span className="text-stone-400 normal-case tracking-normal font-normal"> (atual)</span>}
-                        </th>
-                      ))}
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {DAY_LABELS.map((day) => {
-                      const isAnomaly = anomalies[day];
-                      return (
-                        <tr
-                          key={day}
-                          className={`border-t border-stone-100 ${isAnomaly ? 'bg-red-50/60' : 'hover:bg-stone-50'}`}
-                        >
-                          <td className="px-4 py-2.5 font-medium text-stone-700">
-                            {day}
-                            {isAnomaly && (
-                              <AlertTriangle className="inline ml-1.5 h-3 w-3 text-red-400" />
-                            )}
-                          </td>
-                          {weeks.map((week) => {
-                            const val = week.days[day as keyof typeof week.days];
-                            return (
-                              <td
-                                key={week.weekKey}
-                                className={`px-4 py-2.5 text-right tabular-nums ${
-                                  week.isCurrent
-                                    ? isAnomaly
-                                      ? 'font-bold text-red-600'
-                                      : 'font-bold text-[#8DC63F]'
-                                    : 'text-stone-500'
-                                }`}
-                              >
-                                {val ?? '—'}
-                              </td>
-                            );
-                          })}
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-            </motion.div>
+          {!loading && !error && weeks.length === 0 && (
+            <div className="flex h-48 items-center justify-center text-sm text-stone-400">
+              Nenhum dado encontrado para o período.
+            </div>
+          )}
+
+          {/* Grid de cards — semana atual primeiro */}
+          {!loading && !error && weeksDesc.length > 0 && (
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+              {weeksDesc.map((week, idx) => (
+                <WeekCard
+                  key={week.weekKey}
+                  week={week}
+                  anomalies={anomalies}
+                  index={idx}
+                />
+              ))}
+            </div>
           )}
         </div>
       </main>

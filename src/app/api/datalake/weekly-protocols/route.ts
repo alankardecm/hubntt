@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getMysqlPool, isMysqlConfigured } from '@/infrastructure/datalake/mysql-client';
 import type { RowDataPacket } from 'mysql2';
 
-// Dias da semana em pt-BR, ordem seg→dom
-const DAY_LABELS = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] as const;
+// Dias da semana em pt-BR, ordem dom→sáb
+const DAY_LABELS = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'] as const;
 type DayLabel = (typeof DAY_LABELS)[number];
 
 // MySQL DAYOFWEEK: 1=Dom, 2=Seg … 7=Sáb
