@@ -150,8 +150,10 @@ export async function POST(req: Request) {
     if (isGroup(jid)) continue;
     if (!isTextMsg && !isAudioMsg) continue;
 
-    // Ignora mensagens antigas (batch de reconexão) e já respondidas (retry da Evolution)
-    if (!isRecentMessage(item.messageTimestamp)) continue;
+    // Áudio: só bloqueia reenvio duplicado — não aplica filtro de recência
+    // (áudio é sempre intencional; o servidor pode ter reiniciado durante o build)
+    // Texto: aplica filtro de 60s para descartar batch histórico na reconexão da Evolution
+    if (!isAudioMsg && !isRecentMessage(item.messageTimestamp)) continue;
     if (hasBotResponded(item.key.id)) continue;
     markBotResponded(item.key.id);
 
@@ -159,21 +161,33 @@ export async function POST(req: Request) {
     if (isAudioMsg) {
       const replyPhone = resolveReplyTarget(jid);
       const replyTo    = replyPhone ?? (!jid.includes('@lid') ? jid.split('@')[0] : null);
-      if (replyTo) {
-        const email = getEmailByPhone(replyTo);
-        if (email) {
-          handleAudioMeeting(instance, item, replyTo, email, item.pushName)
-            .catch(err => console.error('[NetMeet] erro ao processar áudio:', err));
-        } else {
-          savePendingAudio(replyTo, {
-            instance, item, replyTo,
-            pushName: item.pushName ?? '',
-            timestamp: new Date().toISOString(),
-          });
-          sendText(instance, replyTo,
-            '🎙️ *Áudio recebido!*\n\nInforme seu email corporativo para salvar a ata:\n_(ex: joao.silva@netturbo.com.br)_'
-          ).catch(err => console.error('[NetMeet] erro ao pedir email:', err));
-        }
+
+      console.log(`[NetMeet] áudio recebido — jid=${jid} replyTo=${replyTo ?? 'null (LID sem registro)'}`);
+
+      if (!replyTo) {
+        // JID @lid sem registro — tenta avisar (geralmente falha, mas loga para diagnóstico)
+        console.warn(`[NetMeet] @lid sem registro: ${jid} — não é possível responder`);
+        sendText(instance, jid,
+          '🎙️ *Áudio recebido!*\n\nPara usar o NetMeet, envie primeiro:\n*/start SEU_NUMERO*\n\nEx: `/start 19999999999`'
+        ).catch(() => {/* @lid sem registro — falha esperada */});
+        continue;
+      }
+
+      const email = getEmailByPhone(replyTo);
+      console.log(`[NetMeet] email para ${replyTo}: ${email ?? 'não registrado'}`);
+
+      if (email) {
+        handleAudioMeeting(instance, item, replyTo, email, item.pushName)
+          .catch(err => console.error('[NetMeet] erro ao processar áudio:', err));
+      } else {
+        savePendingAudio(replyTo, {
+          instance, item, replyTo,
+          pushName: item.pushName ?? '',
+          timestamp: new Date().toISOString(),
+        });
+        sendText(instance, replyTo,
+          '🎙️ *Áudio recebido!*\n\nInforme seu email corporativo para salvar a ata:\n_(ex: joao.silva@netturbo.com.br)_'
+        ).catch(err => console.error('[NetMeet] erro ao pedir email:', err));
       }
       continue;
     }
